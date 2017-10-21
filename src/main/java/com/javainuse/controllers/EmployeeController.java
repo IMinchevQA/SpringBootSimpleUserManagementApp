@@ -90,15 +90,4 @@ public class EmployeeController {
             return ("redirect:/showError.html");
         }
     }
-
-
-    @RequestMapping(value = "/greeting", method = RequestMethod.GET)
-    public String greeting(
-            @RequestParam(value = "name", defaultValue = "unknown")
-            String personName,
-            Model model) {
-            model.addAttribute("personForGreeting", personName);
-        return "greeting";
-    }
-
 }
