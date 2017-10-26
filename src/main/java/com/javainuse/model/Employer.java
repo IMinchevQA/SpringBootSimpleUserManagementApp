@@ -23,9 +23,19 @@ public class Employer {
     @Column(nullable = false, length = 15)
     private String lastName;
 
+//    @OneToOne(mappedBy = "User")
+//    private User user;
+//
+//    public User getUser() {
+//        return this.user;
+//    }
+//
+//    public void setUser(User user) {
+//        this.user = user;
+//    }
+
     @OneToMany(mappedBy = "employer")
     private Set<Employee> employees = new HashSet<Employee>();
-
 
     public long getId() {
         return this.id;
@@ -64,11 +74,11 @@ public class Employer {
     }
 
 
-    public Set<Employee> getEmployees() {
-        return this.employees;
-    }
-
-    public void setEmployees(Set<Employee> employees) {
-        this.employees = employees;
-    }
+//    public Set<Employee> getEmployees() {
+//        return this.employees;
+//    }
+//
+//    public void setEmployees(Set<Employee> employees) {
+//        this.employees = employees;
+//    }
 }

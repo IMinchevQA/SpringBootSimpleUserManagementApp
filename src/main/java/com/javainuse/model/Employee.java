@@ -15,25 +15,28 @@ public class Employee {
     @Id
     private long id;
 
-    @Column(nullable = false, length = 15)
+    @Column
+    private String username;
+
+    @Column(length = 15)
     private String firstName;
 
-    @Column(nullable = false, length = 2)
+    @Column(length = 2)
     private String middleInitial;
 
-    @Column(nullable = false, length = 15)
+    @Column(length = 15)
     private String lastName;
 
-    @Column(nullable = false)
+    @Column
     private String employeeNumber;
 
-    @Column(nullable = false, length = 10, unique = true)
+    @Column(length = 10, unique = true)
     private String departmentID;
 
-    @Column(nullable = false, length = 15)
+    @Column(length = 15)
     private String phoneNumber;
 
-    @Column(nullable = false)
+    @Column
     private Date dateOfHire;
 
 //    @Column(nullable = false, length = 20)
@@ -61,6 +64,14 @@ public class Employee {
         this.id = id;
     }
 
+
+    public String getUsername() {
+        return this.username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
     public String getFirstName() {
         return this.firstName;
