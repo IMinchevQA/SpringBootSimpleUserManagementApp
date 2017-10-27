@@ -44,10 +44,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         this.employeeRepository.save(employee);
     }
 
-//    public void updateEmployee(long id, Employee employee) {
-//        this.employeeRepository.save(employee);
-//    }
-
     public void deleteEmployee(long id) {
         this.employeeRepository.delete(id);
     }

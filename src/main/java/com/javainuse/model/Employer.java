@@ -16,11 +16,14 @@ public class Employer {
     @Id
     private long id;
 
-    @Column(nullable = false, length = 15)
+    @Column
+    private String username;
+
+    @Column(length = 15)
     private String firstName;
-    @Column(nullable = false, length = 2)
+    @Column(length = 1)
     private Character middleInitial;
-    @Column(nullable = false, length = 15)
+    @Column(length = 15)
     private String lastName;
 
 //    @OneToOne(mappedBy = "User")
@@ -45,6 +48,14 @@ public class Employer {
         this.id = id;
     }
 
+    public String getUsername() {
+        return this.username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     public String getSubscriberType() {
         return subscriberType;
     }
@@ -61,8 +72,8 @@ public class Employer {
         return this.middleInitial;
     }
 
-    public void setMiddleInitial(String middleInitial) {
-        this.middleInitial = Character.toUpperCase(middleInitial.charAt(0));
+    public void setMiddleInitial(Character middleInitial) {
+        this.middleInitial = middleInitial;
     }
 
     public String getLastName() {
@@ -74,11 +85,11 @@ public class Employer {
     }
 
 
-//    public Set<Employee> getEmployees() {
-//        return this.employees;
-//    }
-//
-//    public void setEmployees(Set<Employee> employees) {
-//        this.employees = employees;
-//    }
+    public Set<Employee> getEmployees() {
+        return this.employees;
+    }
+
+    public void setEmployees(Set<Employee> employees) {
+        this.employees = employees;
+    }
 }

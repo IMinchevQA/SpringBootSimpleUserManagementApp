@@ -49,4 +49,12 @@ public class Role {
     public void setUsers(Set<User> users) {
         this.users = users;
     }
+
+    public Set<Privilege> getPrivileges() {
+        return this.privileges;
+    }
+
+    public void setPrivileges(Set<Privilege> privileges) {
+        this.privileges = privileges;
+    }
 }

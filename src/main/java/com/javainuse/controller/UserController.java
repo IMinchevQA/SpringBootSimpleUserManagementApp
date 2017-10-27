@@ -3,6 +3,7 @@ package com.javainuse.controller;
 import com.javainuse.model.Role;
 import com.javainuse.repository.RoleRepository;
 import com.javainuse.service.EmployeeServiceImpl;
+import com.javainuse.service.EmployerServiceImpl;
 import com.javainuse.validator.UserValidator;
 import com.javainuse.model.User;
 import com.javainuse.service.SecurityService;
@@ -24,6 +25,11 @@ import java.util.stream.Stream;
  */
 @RestController
 public class UserController {
+
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+    private static final String ROLE_EMPLOYER = "ROLE_EMPLOYER";
+    private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+
     @Autowired
     private UserService userService;
 
@@ -37,14 +43,14 @@ public class UserController {
     private RoleRepository roleRepository;
 
     @Autowired
+    private EmployerServiceImpl employerData;
+
+    @Autowired
     private EmployeeServiceImpl employeeData;
 
     @RequestMapping(value = "/users/register", method = RequestMethod.POST)
     public String registration(@RequestBody RegisterObject payload, BindingResult bindingResult) {
 
-        if (this.roleRepository.findAll().isEmpty()) {
-            addRolesInRoleRepository();
-        }
 
         User user = new User();
         Set<Role> roles = new HashSet<>();
@@ -62,61 +68,67 @@ public class UserController {
         }
 
         userService.save(user);
-        roles.stream().forEach(role -> role.getUsers().add(user));
-        createEntity(this.roleRepository.findOne(payload.getRoleId()), user, employeeData);
+        createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
 
         securityService.autologin(user.getUsername(), user.getPasswordConfirm());
 
         return "Registration successful.";
     }
 
-    private void createEntity(Role role, User user, EmployeeServiceImpl employeeData) {
+    @RequestMapping(value = {"/", "/welcome"}, method = RequestMethod.GET)
+    public String welcome() {
+        return "Welcome!!!";
+    }
+
+    private void createEntity(Role role, User user) {
         try {
             switch (role.getName()) {
-                case "admin":
+                case ROLE_ADMIN:
                     System.out.println("admin");
                     break;
-                case "employer":
-                    System.out.println("employer");
-                    break;
-                case "employee":
-                    EmployeeController employeeController = EmployeeController.class.newInstance();
-                    Method[] methods = EmployeeController.class.getDeclaredMethods();
+                case ROLE_EMPLOYER:
+                    EmployerController employerController = EmployerController.class.newInstance();
+                    Method[] methodsEmployerController = EmployerController.class.getDeclaredMethods();
 
-                    Method setEmployeeDataMethod = Stream.of(methods)
+                    Method setEmployerDataMethod = Stream.of(methodsEmployerController)
+                            .filter(method -> method.getName().equals("setEmployerData"))
+                            .findFirst()
+                            .get();
+
+                    Method addEmployerMethod = Stream.of(methodsEmployerController)
+                            .filter(method -> method.getName().equals("addNewEmployer"))
+                            .findFirst()
+                            .get();
+
+                    setEmployerDataMethod.setAccessible(true);
+                    setEmployerDataMethod.invoke(employerController, this.employerData);
+                    addEmployerMethod.setAccessible(true);
+                    addEmployerMethod.invoke(employerController, user);
+
+                    break;
+                case ROLE_EMPLOYEE:
+                    EmployeeController employeeController = EmployeeController.class.newInstance();
+                    Method[] methodsEmployeeController = EmployeeController.class.getDeclaredMethods();
+
+                    Method setEmployeeDataMethod = Stream.of(methodsEmployeeController)
                             .filter(method -> method.getName().equals("setEmployeeData"))
                             .findFirst()
                             .get();
 
-                    Method addEmployeeMethod = Stream.of(methods)
+                    Method addEmployeeMethod = Stream.of(methodsEmployeeController)
                             .filter(method -> method.getName().equals("addNewEmployee"))
                             .findFirst()
                             .get();
 
-                    addEmployeeMethod.setAccessible(true);
                     setEmployeeDataMethod.setAccessible(true);
-                    setEmployeeDataMethod.invoke(employeeController, employeeData);
+                    setEmployeeDataMethod.invoke(employeeController, this.employeeData);
+                    addEmployeeMethod.setAccessible(true);
                     addEmployeeMethod.invoke(employeeController, user);
                     break;
             }
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
-    }
-
-    private void addRolesInRoleRepository() {
-        Role adminRole = new Role();
-        adminRole.setName("admin");
-        adminRole.setUsers(new HashSet<User>());
-        Role employerRole = new Role();
-        employerRole.setName("employer");
-        employerRole.setUsers(new HashSet<User>());
-        Role employeeRole = new Role();
-        employeeRole.setName("employee");
-        employeeRole.setUsers(new HashSet<User>());
-        this.roleRepository.save(adminRole);
-        this.roleRepository.save(employerRole);
-        this.roleRepository.save(employeeRole);
     }
 }
 

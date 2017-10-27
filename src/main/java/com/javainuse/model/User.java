@@ -19,7 +19,7 @@ public class User {
     @Column
     private String password;
 
-    @Column
+    @Transient
     private String passwordConfirm;
 
     @ManyToMany

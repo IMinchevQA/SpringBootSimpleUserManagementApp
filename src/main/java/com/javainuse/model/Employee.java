@@ -1,5 +1,7 @@
 package com.javainuse.model;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 import javax.persistence.*;
 import java.util.Date;
 
@@ -36,7 +38,7 @@ public class Employee {
     @Column(length = 15)
     private String phoneNumber;
 
-    @Column
+    @DateTimeFormat(pattern = "dd/MM/yyyy")
     private Date dateOfHire;
 
 //    @Column(nullable = false, length = 20)
@@ -48,12 +50,20 @@ public class Employee {
 //    @Column(nullable = false)
     private String sex;
 
+
     private Date dateOfBirth;
     private Integer yearSalary;
     private Integer yearBonus;
     private Integer commission;
 
-    @ManyToOne()
+    @ManyToOne
+    @JoinColumn(name = "employer_id")
+//    @JoinTable(
+//            name = "employee_employer",
+//            joinColumns = @JoinColumn(
+//                    name = "employer_id"),
+//            inverseJoinColumns = @JoinColumn(
+//                    name = "employee_id"))
     private Employer employer;
 
     public long getId() {
@@ -185,6 +195,14 @@ public class Employee {
 
     public void setComission(Integer  comission) {
         this.commission = comission;
+    }
+
+    public Employer getEmployer() {
+        return this.employer;
+    }
+
+    public void setEmployer(Employer employer) {
+        this.employer = employer;
     }
 
     @Override
