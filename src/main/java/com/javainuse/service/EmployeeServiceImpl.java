@@ -3,6 +3,8 @@ package com.javainuse.service;
 import com.javainuse.repository.EmployeeRepository;
 import com.javainuse.model.Employee;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,10 +20,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     EmployeeRepository employeeRepository;
 
     @Override
+    public Page<Employee> listEmployees(Pageable pageable) {
+        return this.employeeRepository.findAll(pageable);
+    }
+
+    @Override
     public List<Employee> getAllEmployees() {
-        List<Employee> employees = new ArrayList<>();
-        this.employeeRepository.findAll().forEach(employees::add);
-        return employees;
+        List<Employee> allEmployees = new ArrayList<>();
+        this.employeeRepository.findAll().forEach(allEmployees::add);
+        return allEmployees;
     }
 
     @Override

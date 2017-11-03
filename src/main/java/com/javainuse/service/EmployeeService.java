@@ -1,6 +1,8 @@
 package com.javainuse.service;
 
 import com.javainuse.model.Employee;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.List;
  */
 @Service
 public interface EmployeeService {
+
+    Page<Employee> listEmployees(Pageable pageable);
 
     List<Employee> getAllEmployees();
 

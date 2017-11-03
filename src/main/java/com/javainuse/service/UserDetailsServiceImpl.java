@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.Set;
 
+import static java.util.Collections.emptyList;
+
 /**
  * Created by Ivan Minchev on 10/24/2017.
  */
@@ -28,10 +30,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
         User user = this.userRepository.findUserByUsername(username);
 
         Set<GrantedAuthority> grantedAuthorities = new HashSet<>();
-        if (user.getRoles() != null) {
+        if (user != null) {
             for (Role role : user.getRoles()) {
                 grantedAuthorities.add(new SimpleGrantedAuthority(role.getName()));
             }
@@ -39,6 +42,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("No user found with username: " + username);
         }
 
+        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), emptyList());
+
+        /** Old code until 31 - Oct - 2017
         return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), grantedAuthorities);
+         */
     }
 }

@@ -2,23 +2,23 @@ package com.javainuse.controller;
 
 import com.javainuse.model.Role;
 import com.javainuse.repository.RoleRepository;
-import com.javainuse.service.EmployeeServiceImpl;
-import com.javainuse.service.EmployerServiceImpl;
+import com.javainuse.service.*;
 import com.javainuse.validator.UserValidator;
 import com.javainuse.model.User;
-import com.javainuse.service.SecurityService;
-import com.javainuse.service.UserService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Stream;
+
+import static com.javainuse.security.SecurityConstants.REGISTER_URL;
 
 /**
  * Created by Ivan Minchev on 10/24/2017.
@@ -31,7 +31,7 @@ public class UserController {
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
 
     @Autowired
-    private UserService userService;
+    private UserService userRepository;
 
     @Autowired
     private SecurityService securityService;
@@ -48,9 +48,37 @@ public class UserController {
     @Autowired
     private EmployeeServiceImpl employeeData;
 
-    @RequestMapping(value = "/users/register", method = RequestMethod.POST)
-    public String registration(@RequestBody RegisterObject payload, BindingResult bindingResult) {
 
+    @RequestMapping(value = "/users/changeStatus/{username}", method = RequestMethod.POST)
+    public String changeUserStatus(@PathVariable("username") String username) {
+        User user = this.userRepository.findByUsername(username);
+        String newStatus = "";
+        if (user == null) {
+            throw new UsernameNotFoundException("No employer found with username: " + username);
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username1 = authentication.getName();
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+        System.out.println(username1);
+
+//        if (user.getStatus().equals("active")) {
+//            user.setStatus("inactive");
+//            newStatus = "Inactive";
+//        } else {
+//            user.setStatus("active");
+//            newStatus = "Active";
+//        }
+        this.userRepository.save(user);
+        return "Status of user with username "
+                + user.getUsername()
+                + " changed to "
+                + newStatus + "!";
+    }
+
+
+    @RequestMapping(value = REGISTER_URL, method = RequestMethod.POST)
+    public String registration(@RequestBody RegisterObject payload, BindingResult bindingResult) {
 
         User user = new User();
         Set<Role> roles = new HashSet<>();
@@ -60,24 +88,17 @@ public class UserController {
         user.setPasswordConfirm(payload.getPasswordConfirm());
         user.setRoles(roles);
 
-        userValidator.validate(user, bindingResult);
+        this.userValidator.validate(user, bindingResult);
 
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
             return error != null ? error : "Registration failed";
         }
 
-        userService.save(user);
+        this.userRepository.save(user);
         createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
 
-        securityService.autologin(user.getUsername(), user.getPasswordConfirm());
-
         return "Registration successful.";
-    }
-
-    @RequestMapping(value = {"/", "/welcome"}, method = RequestMethod.GET)
-    public String welcome() {
-        return "Welcome!!!";
     }
 
     private void createEntity(Role role, User user) {
@@ -129,6 +150,28 @@ public class UserController {
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
+    }
+}
+
+class LoginObject {
+    private String username;
+    private String password;
+
+
+    public String getUsername() {
+        return this.username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return this.password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
 

@@ -30,7 +30,9 @@ public class User {
                     name = "role_id",  referencedColumnName = "rid"))
     private Set<Role> roles;
 
+    private boolean enabled;
 
+    private boolean tokenExpired;
 
     public long getUid() {
         return this.uid;
@@ -75,7 +77,9 @@ public class User {
     }
 
 
-//    @OneToOne(mappedBy = "employer")
+
+
+    //    @OneToOne(mappedBy = "employer")
 //    @Nullable
 //    private Employer employer;
 //

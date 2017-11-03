@@ -3,6 +3,8 @@ package com.javainuse.service;
 import com.javainuse.model.Employer;
 import com.javainuse.repository.EmployerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,10 +20,8 @@ public class EmployerServiceImpl implements EmployerService {
     EmployerRepository employerRepository;
 
     @Override
-    public List<Employer> getAllEmployers() {
-        List<Employer> employers = new ArrayList<>();
-        this.employerRepository.findAll().forEach(employers::add);
-        return employers;
+    public Page<Employer> listEmployers(Pageable pageable) {
+        return this.employerRepository.findAll(pageable);
     }
 
     @Override

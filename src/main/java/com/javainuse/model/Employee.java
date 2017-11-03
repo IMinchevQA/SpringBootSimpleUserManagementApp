@@ -1,5 +1,7 @@
 package com.javainuse.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import javax.persistence.*;
@@ -10,6 +12,7 @@ import java.util.Date;
  */
 @Entity
 @Table(name = "employees")
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Employee {
     private static final String subscriberType = "employee";
 
@@ -41,13 +44,13 @@ public class Employee {
     @DateTimeFormat(pattern = "dd/MM/yyyy")
     private Date dateOfHire;
 
-//    @Column(nullable = false, length = 20)
+    //    @Column(nullable = false, length = 20)
     private String job;
 
-//    @Column(nullable = false)
+    //    @Column(nullable = false)
     private Integer formalEducationYears;
 
-//    @Column(nullable = false)
+    //    @Column(nullable = false)
     private String sex;
 
 
@@ -56,6 +59,7 @@ public class Employee {
     private Integer yearBonus;
     private Integer commission;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "employer_id")
 //    @JoinTable(
@@ -197,6 +201,8 @@ public class Employee {
         this.commission = comission;
     }
 
+
+
     public Employer getEmployer() {
         return this.employer;
     }
@@ -205,15 +211,15 @@ public class Employee {
         this.employer = employer;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Employee [id=").append(this.id);
-        sb.append(", firstName=").append(this.firstName);
-        sb.append(", middleInitial=").append(this.middleInitial).append(".");
-        sb.append(", lastName=").append(this.lastName);
-        sb.append("]");
-//        return "Employee [id=" + id + ", firstName=" + this.firstName + ", lastName=" + this.lastName+ "]";
-        return sb.toString();
-    }
+//    @Override
+//    public String toString() {
+//        StringBuilder sb = new StringBuilder();
+//        sb.append("Employee [id=").append(this.id);
+//        sb.append(", firstName=").append(this.firstName);
+//        sb.append(", middleInitial=").append(this.middleInitial).append(".");
+//        sb.append(", lastName=").append(this.lastName);
+//        sb.append("]");
+////        return "Employee [id=" + id + ", firstName=" + this.firstName + ", lastName=" + this.lastName+ "]";
+//        return sb.toString();
+//    }
 }

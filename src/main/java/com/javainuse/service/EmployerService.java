@@ -1,6 +1,9 @@
 package com.javainuse.service;
 
 import com.javainuse.model.Employer;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,7 +14,7 @@ import java.util.List;
 @Service
 public interface EmployerService {
 
-    List<Employer> getAllEmployers();
+    Page<Employer> listEmployers(Pageable pageable);
 
     Employer findEmployerById(long id);
 

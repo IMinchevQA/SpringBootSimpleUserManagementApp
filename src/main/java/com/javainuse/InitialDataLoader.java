@@ -34,7 +34,7 @@ public class InitialDataLoader implements ApplicationListener<ContextRefreshedEv
      * true -  no data will be loaded in the a.m. repositories
      * false - initial data will be loaded in a.m. repositories
      */
-    boolean alreadySetup = false;
+    boolean alreadySetup = true;
 
     @Autowired
     private UserRepository userRepository;
@@ -74,7 +74,7 @@ public class InitialDataLoader implements ApplicationListener<ContextRefreshedEv
         Set<Role> adminRoles = new HashSet<>();
         adminRoles.add(this.roleRepository.findRoleByName(ROLE_ADMIN));
         User adminUser = new User();
-        adminUser.setUsername("Admin");
+        adminUser.setUsername("Admin1");
         adminUser.setPassword(bCryptPasswordEncoder.encode("Administrator"));
         adminUser.setPasswordConfirm("Administrator");
         adminUser.setRoles(adminRoles);
