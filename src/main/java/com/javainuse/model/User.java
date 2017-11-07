@@ -30,8 +30,10 @@ public class User {
                     name = "role_id",  referencedColumnName = "rid"))
     private Set<Role> roles;
 
-    private boolean enabled;
+    @Column
+    private boolean enabled = false;
 
+    @Column
     private boolean tokenExpired;
 
     public long getUid() {
@@ -76,14 +78,15 @@ public class User {
         this.roles = roles;
     }
 
+    public boolean getEnabled() {
+        return this.enabled;
+    }
 
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
 
-
-    //    @OneToOne(mappedBy = "employer")
-//    @Nullable
-//    private Employer employer;
-//
-//    @OneToOne(mappedBy = "employee")
-//    @Nullable
-//    private Employee employee;
+    public void changeStatus() {
+        this.enabled = !this.enabled;
+    }
 }

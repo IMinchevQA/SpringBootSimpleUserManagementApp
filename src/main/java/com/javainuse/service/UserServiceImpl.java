@@ -3,6 +3,8 @@ package com.javainuse.service;
 import com.javainuse.model.User;
 import com.javainuse.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,18 +22,26 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public void save(User user) {
-        user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-
-
-//        user.setRoles(new HashSet<>(roleRepository.findAll()));
-        userRepository.save(user);
+    public Page<User> listUsers(Pageable pageable) {
+        return this.userRepository.findAll(pageable);
     }
 
     @Override
     public User findByUsername(String username) {
         return userRepository.findUserByUsername(username);
     }
+
+    @Override
+    public User findById(Long id) {
+        return this.userRepository.findOne(id);
+    }
+
+    @Override
+    public void save(User user) {
+        user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
+        userRepository.save(user);
+    }
+
 
 
     @Override

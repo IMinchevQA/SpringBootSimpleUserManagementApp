@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import javax.persistence.*;
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -23,41 +24,49 @@ public class Employee {
     @Column
     private String username;
 
-    @Column(length = 15)
+    @Column
     private String firstName;
 
-    @Column(length = 2)
+    @Column
     private String middleInitial;
 
-    @Column(length = 15)
+    @Column
     private String lastName;
 
     @Column
     private String employeeNumber;
 
-    @Column(length = 10, unique = true)
+    @Column
     private String departmentID;
 
-    @Column(length = 15)
+    @Column
     private String phoneNumber;
 
+    @Column
     @DateTimeFormat(pattern = "dd/MM/yyyy")
     private Date dateOfHire;
 
-    //    @Column(nullable = false, length = 20)
+    @Column
     private String job;
 
-    //    @Column(nullable = false)
+    @Column
     private Integer formalEducationYears;
 
-    //    @Column(nullable = false)
+    @Column
     private String sex;
 
-
+    @Column
+    @DateTimeFormat(pattern = "dd/MM/yyyy")
     private Date dateOfBirth;
-    private Integer yearSalary;
-    private Integer yearBonus;
-    private Integer commission;
+
+    @Column
+    private BigDecimal yearSalary;
+
+    @Column
+    private BigDecimal yearBonus;
+
+    @Column
+    private BigDecimal commission;
 
     @JsonIgnore
     @ManyToOne
@@ -100,7 +109,9 @@ public class Employee {
     }
 
     public void setMiddleInitial(String middleInitial) {
-        this.middleInitial = middleInitial.substring(0,1).toUpperCase();
+        if (middleInitial != null) {
+            this.middleInitial = middleInitial.toUpperCase();
+        }
     }
 
     public String getLastName() {
@@ -142,7 +153,9 @@ public class Employee {
 
 
     public void setDateOfHire(Date dateOfHire) {
-        this.dateOfHire = new java.sql.Date(dateOfHire.getTime());
+        if (dateOfHire != null) {
+            this.dateOfHire = new java.sql.Date(dateOfHire.getTime());
+        }
     }
 
     public String getJob() {
@@ -174,31 +187,33 @@ public class Employee {
     }
 
     public void setDateOfBirth(Date dateOfBirth) {
-        this.dateOfBirth = dateOfBirth;
+        if (dateOfBirth != null) {
+            this.dateOfBirth = new java.sql.Date(dateOfBirth.getTime());
+        }
     }
 
-    public Integer getYearSalary() {
+    public BigDecimal getYearSalary() {
         return this.yearSalary;
     }
 
-    public void setYearSalary(Integer yearSalary) {
+    public void setYearSalary(BigDecimal yearSalary) {
         this.yearSalary = yearSalary;
     }
 
-    public Integer getYearBonus() {
+    public BigDecimal getYearBonus() {
         return this.yearBonus;
     }
 
-    public void setYearBonus(Integer yearBonus) {
+    public void setYearBonus(BigDecimal yearBonus) {
         this.yearBonus = yearBonus;
     }
 
-    public Integer getComission() {
+    public BigDecimal getCommission() {
         return this.commission;
     }
 
-    public void setComission(Integer  comission) {
-        this.commission = comission;
+    public void setCommission(BigDecimal  commission) {
+        this.commission = commission;
     }
 
 

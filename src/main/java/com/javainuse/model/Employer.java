@@ -21,23 +21,14 @@ public class Employer {
     @Column
     private String username;
 
-    @Column(length = 15)
+    @Column
     private String firstName;
-    @Column(length = 1)
-    private Character middleInitial;
-    @Column(length = 15)
-    private String lastName;
 
-//    @OneToOne(mappedBy = "User")
-//    private User user;
-//
-//    public User getUser() {
-//        return this.user;
-//    }
-//
-//    public void setUser(User user) {
-//        this.user = user;
-//    }
+    @Column
+    private String middleInitial;
+
+    @Column
+    private String lastName;
 
 
     @OneToMany(mappedBy = "employer")
@@ -71,11 +62,11 @@ public class Employer {
         this.firstName = firstName;
     }
 
-    public Character getMiddleInitial() {
+    public String getMiddleInitial() {
         return this.middleInitial;
     }
 
-    public void setMiddleInitial(Character middleInitial) {
+    public void setMiddleInitial(String middleInitial) {
         this.middleInitial = middleInitial;
     }
 

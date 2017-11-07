@@ -6,10 +6,10 @@ import com.javainuse.service.*;
 import com.javainuse.validator.UserValidator;
 import com.javainuse.model.User;
 
+import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +18,8 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static com.javainuse.security.SecurityConstants.REGISTER_URL;
+import static com.javainuse.controller.ControllerConstants.*;
+import static com.javainuse.security.SecurityConstants.*;
 
 /**
  * Created by Ivan Minchev on 10/24/2017.
@@ -31,7 +32,7 @@ public class UserController {
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
 
     @Autowired
-    private UserService userRepository;
+    private UserService userData;
 
     @Autowired
     private SecurityService securityService;
@@ -49,31 +50,38 @@ public class UserController {
     private EmployeeServiceImpl employeeData;
 
 
-    @RequestMapping(value = "/users/changeStatus/{username}", method = RequestMethod.POST)
-    public String changeUserStatus(@PathVariable("username") String username) {
-        User user = this.userRepository.findByUsername(username);
-        String newStatus = "";
-        if (user == null) {
-            throw new UsernameNotFoundException("No employer found with username: " + username);
+
+    @RequestMapping(value = LIST_ALL_USERS_URL, method = RequestMethod.GET)
+    public List<User> listUsers(@RequestHeader(value="Authorization") String authToken,
+                                Pageable pageable) throws IllegalAccessException {
+        String debug = "debug";
+        if (!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
+            throw new IllegalAccessException("Only Administrator can see all users!");
         }
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username1 = authentication.getName();
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-        System.out.println(username1);
+        Page<User> page = this.userData.listUsers(pageable);
+        return page.getContent();
+    }
 
-//        if (user.getStatus().equals("active")) {
-//            user.setStatus("inactive");
-//            newStatus = "Inactive";
-//        } else {
-//            user.setStatus("active");
-//            newStatus = "Active";
-//        }
-        this.userRepository.save(user);
-        return "Status of user with username "
-                + user.getUsername()
-                + " changed to "
-                + newStatus + "!";
+
+    @RequestMapping(value = CHANGE_USER_STATUS_URL, method = RequestMethod.POST)
+    public String changeUserStatus(@RequestHeader(value="Authorization") String authToken,
+                                   @PathVariable("id") Long id) throws IllegalAccessException {
+
+        User user = this.userData.findById(id);
+        if (user == null) {
+            throw new UsernameNotFoundException("No employer found with id: " + id);
+        }
+
+        String requestUsername = getUsernameRequestUser(authToken);
+        if (!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
+            throw new IllegalAccessException("Only Administrator can change Users status!");
+        }
+
+        user.changeStatus();
+        this.userData.save(user);
+
+        return String.format("Status of user with username %s changed to %s!", user.getUsername(), user.getEnabled());
     }
 
 
@@ -95,11 +103,12 @@ public class UserController {
             return error != null ? error : "Registration failed";
         }
 
-        this.userRepository.save(user);
+        this.userData.save(user);
         createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
 
         return "Registration successful.";
     }
+
 
     private void createEntity(Role role, User user) {
         try {
@@ -151,7 +160,19 @@ public class UserController {
             System.out.println(ex.getMessage());
         }
     }
+
+
+    private String getUsernameRequestUser(String authToken) {
+        String usernameRequestUser = Jwts.parser()
+                .setSigningKey(SECRET.getBytes())
+                .parseClaimsJws(authToken.replace(TOKEN_PREFIX, ""))
+                .getBody()
+                .getSubject();
+        return usernameRequestUser;
+    }
 }
+
+
 
 class LoginObject {
     private String username;
