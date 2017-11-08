@@ -1,9 +1,6 @@
 package com.javainuse.model;
 
-import com.javainuse.model.Role;
-
 import javax.persistence.*;
-import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -29,9 +26,6 @@ public class User {
             inverseJoinColumns = @JoinColumn(
                     name = "role_id",  referencedColumnName = "rid"))
     private Set<Role> roles;
-
-    @Column
-    private boolean enabled = false;
 
     @Column
     private boolean tokenExpired;
@@ -76,17 +70,5 @@ public class User {
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
-    }
-
-    public boolean getEnabled() {
-        return this.enabled;
-    }
-
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public void changeStatus() {
-        this.enabled = !this.enabled;
     }
 }

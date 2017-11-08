@@ -12,7 +12,6 @@ import java.util.Set;
 @Entity
 @Table(name = "employers")
 public class Employer {
-    private static final  String subscriberType = "employer";
 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
@@ -34,6 +33,9 @@ public class Employer {
     @OneToMany(mappedBy = "employer")
     private Set<Employee> employees = new HashSet<Employee>();
 
+    @Column
+    private boolean isActive = false;
+
     public long getId() {
         return this.id;
     }
@@ -48,10 +50,6 @@ public class Employer {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public String getSubscriberType() {
-        return subscriberType;
     }
 
     public String getFirstName() {
@@ -85,5 +83,13 @@ public class Employer {
 
     public void setEmployees(Set<Employee> employees) {
         this.employees = employees;
+    }
+
+    public boolean getIsActive() {
+        return this.isActive;
+    }
+
+    public void setIsActive() {
+        this.isActive = !isActive;
     }
 }

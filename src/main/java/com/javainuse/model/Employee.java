@@ -25,6 +25,9 @@ public class Employee {
     private String username;
 
     @Column
+    private String employeeNumber;
+
+    @Column
     private String firstName;
 
     @Column
@@ -32,9 +35,6 @@ public class Employee {
 
     @Column
     private String lastName;
-
-    @Column
-    private String employeeNumber;
 
     @Column
     private String departmentID;
@@ -79,6 +79,9 @@ public class Employee {
 //                    name = "employee_id"))
     private Employer employer;
 
+    @Column
+    private boolean isActive = false;
+
     public long getId() {
         return this.id;
     }
@@ -96,6 +99,14 @@ public class Employee {
         this.username = username;
     }
 
+    public String getEmployeeNumber() {
+        return this.employeeNumber;
+    }
+
+    public void setEmployeeNumber(String employeeNumber) {
+        this.employeeNumber = employeeNumber;
+    }
+
     public String getFirstName() {
         return this.firstName;
     }
@@ -109,9 +120,7 @@ public class Employee {
     }
 
     public void setMiddleInitial(String middleInitial) {
-        if (middleInitial != null) {
-            this.middleInitial = middleInitial.toUpperCase();
-        }
+        this.middleInitial = middleInitial;
     }
 
     public String getLastName() {
@@ -120,14 +129,6 @@ public class Employee {
 
     public void setLastName(String familyName) {
         this.lastName = familyName;
-    }
-
-    public String getEmployeeNumber() {
-        return this.employeeNumber;
-    }
-
-    public void setEmployeeNumber(String employeeNumber) {
-        this.employeeNumber = employeeNumber;
     }
 
     public String getDepartmentID() {
@@ -146,11 +147,9 @@ public class Employee {
         this.phoneNumber = phoneNumber;
     }
 
-
     public Date getDateOfHire() {
         return this.dateOfHire;
     }
-
 
     public void setDateOfHire(Date dateOfHire) {
         if (dateOfHire != null) {
@@ -216,14 +215,20 @@ public class Employee {
         this.commission = commission;
     }
 
-
-
     public Employer getEmployer() {
         return this.employer;
     }
 
     public void setEmployer(Employer employer) {
         this.employer = employer;
+    }
+
+    public boolean getIsActive() {
+        return this.isActive;
+    }
+
+    public void setIsActive() {
+        this.isActive = !isActive;
     }
 
 //    @Override

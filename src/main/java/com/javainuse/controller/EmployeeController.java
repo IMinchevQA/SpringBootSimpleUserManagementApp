@@ -18,7 +18,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -114,13 +113,36 @@ public class EmployeeController {
             return updateEmployeeByEmployer(employeeToBeUpdated, payload, bindingResult);
         }
 
+        /**
+         * When user is Admin a full set off values must be provided.
+         */
+        employeeToBeUpdated.setEmployeeNumber(payload.getEmployeeNumber());
         employeeToBeUpdated.setFirstName(payload.getFirstName());
         employeeToBeUpdated.setMiddleInitial(payload.getMiddleInitial());
         employeeToBeUpdated.setLastName(payload.getLastName());
-        employeeToBeUpdated.setEmployeeNumber(payload.getEmployeeNumber());
         employeeToBeUpdated.setDepartmentID(payload.getDepartmentID());
         employeeToBeUpdated.setPhoneNumber(payload.getPhoneNumber());
         employeeToBeUpdated.setDateOfHire(payload.getDateOfHire());
+        employeeToBeUpdated.setJob(payload.getJob());
+        employeeToBeUpdated.setFormalEducationYears(payload.getFormalEducationYears());
+        employeeToBeUpdated.setSex(payload.getSex());
+        employeeToBeUpdated.setDateOfBirth(payload.getDateOfBirth());
+        employeeToBeUpdated.setYearSalary(payload.getYearSalary());
+        employeeToBeUpdated.setYearBonus(payload.getYearBonus());
+        employeeToBeUpdated.setCommission(payload.getCommission());
+
+        /**
+         * Performing full Update validation
+         */
+        this.employeeByEmployeeUpdateValidator.validate(employeeToBeUpdated, bindingResult);
+        this.employeeByEmployerUpdateValidator.validate(employeeToBeUpdated, bindingResult);
+
+
+        if (bindingResult.hasErrors()) {
+            String error = bindingResult.getAllErrors().get(0).getCode();
+            return error != null ? error : "Update failed";
+        }
+
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
 
         return String.format("Employee with username '%s' was updated successfully!", employeeToBeUpdated.getUsername());
@@ -247,6 +269,42 @@ public class EmployeeController {
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
         return String.format("Employee with username '%s' was updated successfully!", employeeToBeUpdated.getUsername());
+    }
+
+    @RequestMapping(value = CHANGE_EMPLOYEE_STATUS_URL, method = RequestMethod.POST)
+    private String changeEmployeeStatus(@RequestHeader("Authorization") String authToken,
+                                        @PathVariable("id") long id) throws IllegalAccessException {
+
+        Employee employee = this.employeeData.findEmployeeById(id);
+
+        if (employee == null) {
+            throw new UsernameNotFoundException("There is no employee with id: " + id);
+        }
+
+        String requestUsername = this.getUsernameRequestUser(authToken);
+        long requestUserId;
+
+        if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
+            requestUserId = this.employeeData.findEmployeeByUsername(requestUsername).getId();
+            if (requestUserId != id) {
+                throw new IllegalAccessException("Employee cannot change another Employee's status!");
+            }
+        }
+
+        if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
+            requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
+            if (employee.getEmployer() != null && requestUserId != employee.getEmployer().getId()) {
+                throw new IllegalAccessException("Employer cannot change the status of Employee subscribed to another Employer!");
+            } else if (employee.getEmployer() == null) {
+                throw new IllegalAccessException("Only Administrator can change status of Employee who has no Employer!");
+            }
+        }
+
+        employee.setIsActive();
+        this.employeeData.updateEmployee(employee, employee.getUsername());
+
+        return String.format("Status of Employee with username %s changed to %s!",
+                employee.getUsername(), employee.getIsActive() ? "active" : "inactive");
     }
 
     private String getUsernameRequestUser(String authToken) {

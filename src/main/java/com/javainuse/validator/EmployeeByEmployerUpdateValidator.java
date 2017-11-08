@@ -6,6 +6,7 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
 import org.springframework.validation.Validator;
 
+import static com.javainuse.validator.ValidatorConstants.LETTERS_PATTERN;
 import static com.javainuse.validator.ValidatorConstants.NUMBERS_PATTERN;
 
 /**
@@ -25,7 +26,6 @@ public class EmployeeByEmployerUpdateValidator implements Validator {
 
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "employeeNumber", "employeeForm.employeeNumber is empty!");
         if (null != employee.getEmployeeNumber()) {
-
             if (!employee.getEmployeeNumber().matches(NUMBERS_PATTERN)) {
                 errors.rejectValue("employeeNumber", "employeeForm.employeeNumber must have only numbers!");
             }
@@ -40,7 +40,6 @@ public class EmployeeByEmployerUpdateValidator implements Validator {
 
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "departmentID", "employeeForm.departmentID is empty!");
         if (null != employee.getDepartmentID()) {
-
             if (!employee.getDepartmentID().matches(NUMBERS_PATTERN)) {
                 errors.rejectValue("departmentID", "departmentID.employeeNumber must have only numbers!");
             }
@@ -51,10 +50,14 @@ public class EmployeeByEmployerUpdateValidator implements Validator {
         }
 
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "job", "employeeForm.job is empty!");
-        if (null != employee.getJob()
-                && (employee.getJob().length() < 5
-                || employee.getDepartmentID().length() > 30)) {
-            errors.rejectValue("job", "employeeForm.job must be btw. 5 and 30 symbols long!");
+        if (null != employee.getJob()) {
+            if (!employee.getJob().matches(LETTERS_PATTERN)) {
+                errors.rejectValue("job", "employeeForm.job must have only letters!");
+            }
+
+            if (employee.getJob().length() < 5 || employee.getDepartmentID().length() > 30) {
+                errors.rejectValue("job", "employeeForm.job must be btw. 5 and 30 symbols long!");
+            }
         }
 
 

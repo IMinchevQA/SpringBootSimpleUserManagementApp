@@ -26,7 +26,7 @@ public class EmployerUpdateValidator implements Validator {
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "firstName", "employerForm.firstName is empty!");
         if (null != employer.getFirstName()) {
             if (!employer.getFirstName().matches(LETTERS_PATTERN)) {
-                errors.rejectValue("firstName", "employerForm.firstName must must have only letters!");
+                errors.rejectValue("firstName", "employerForm.firstName must have only letters!");
             }
 
             if(employer.getFirstName().length() < 3 || employer.getFirstName().length() > 15) {

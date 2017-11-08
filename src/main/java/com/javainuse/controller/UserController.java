@@ -35,9 +35,6 @@ public class UserController {
     private UserService userData;
 
     @Autowired
-    private SecurityService securityService;
-
-    @Autowired
     private UserValidator userValidator;
 
     @Autowired
@@ -62,28 +59,6 @@ public class UserController {
         Page<User> page = this.userData.listUsers(pageable);
         return page.getContent();
     }
-
-
-    @RequestMapping(value = CHANGE_USER_STATUS_URL, method = RequestMethod.POST)
-    public String changeUserStatus(@RequestHeader(value="Authorization") String authToken,
-                                   @PathVariable("id") Long id) throws IllegalAccessException {
-
-        User user = this.userData.findById(id);
-        if (user == null) {
-            throw new UsernameNotFoundException("No employer found with id: " + id);
-        }
-
-        String requestUsername = getUsernameRequestUser(authToken);
-        if (!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
-            throw new IllegalAccessException("Only Administrator can change Users status!");
-        }
-
-        user.changeStatus();
-        this.userData.save(user);
-
-        return String.format("Status of user with username %s changed to %s!", user.getUsername(), user.getEnabled());
-    }
-
 
     @RequestMapping(value = REGISTER_URL, method = RequestMethod.POST)
     public String registration(@RequestBody RegisterObject payload, BindingResult bindingResult) {
