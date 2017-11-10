@@ -1,7 +1,5 @@
 package com.javainuse.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import javax.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,6 +30,9 @@ public class Employer {
 
     @OneToMany(mappedBy = "employer")
     private Set<Employee> employees = new HashSet<Employee>();
+
+    @OneToMany(mappedBy = "employer")
+    private Set<TaskEmployee> taskEmployees = new HashSet<>();
 
     @Column
     private boolean isActive = false;
@@ -91,5 +92,13 @@ public class Employer {
 
     public void setIsActive() {
         this.isActive = !isActive;
+    }
+
+    public Set<TaskEmployee> getTaskEmployees() {
+        return this.taskEmployees;
+    }
+
+    public void setTaskEmployees(Set<TaskEmployee> taskEmployees) {
+        this.taskEmployees = taskEmployees;
     }
 }

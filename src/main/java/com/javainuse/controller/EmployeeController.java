@@ -132,7 +132,7 @@ public class EmployeeController {
         employeeToBeUpdated.setCommission(payload.getCommission());
 
         /**
-         * Performing full Update validation
+         * Performing full UpdateTaskProgress validation
          */
         this.employeeByEmployeeUpdateValidator.validate(employeeToBeUpdated, bindingResult);
         this.employeeByEmployerUpdateValidator.validate(employeeToBeUpdated, bindingResult);
@@ -140,7 +140,7 @@ public class EmployeeController {
 
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "Update failed";
+            return error != null ? error : "UpdateTaskProgress failed";
         }
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
@@ -222,7 +222,7 @@ public class EmployeeController {
         this.employeeByEmployerUpdateValidator.validate(employeeToBeUpdated, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "Update failed";
+            return error != null ? error : "UpdateTaskProgress failed";
         }
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
 
@@ -264,7 +264,7 @@ public class EmployeeController {
         this.employeeByEmployeeUpdateValidator.validate(employeeToBeUpdated, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "Update failed";
+            return error != null ? error : "UpdateTaskProgress failed";
         }
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());

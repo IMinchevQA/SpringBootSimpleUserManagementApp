@@ -7,6 +7,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.Set;
 
 /**
  * Created by Ivan Minchev on 10/18/2017.
@@ -71,16 +72,21 @@ public class Employee {
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "employer_id")
-//    @JoinTable(
-//            name = "employee_employer",
-//            joinColumns = @JoinColumn(
-//                    name = "employer_id"),
-//            inverseJoinColumns = @JoinColumn(
-//                    name = "employee_id"))
     private Employer employer;
 
     @Column
     private boolean isActive = false;
+
+    @JsonIgnore
+    @ManyToMany
+    @JoinTable(
+            name = "employees_tasks",
+            joinColumns = @JoinColumn(
+                    name = "employee_id"),
+            inverseJoinColumns = @JoinColumn(
+                    name = "task_id"))
+    private Set<TaskEmployee> employeeTasks;
+
 
     public long getId() {
         return this.id;
@@ -231,7 +237,15 @@ public class Employee {
         this.isActive = !isActive;
     }
 
-//    @Override
+    public Set<TaskEmployee> getEmployeeTasks() {
+        return this.employeeTasks;
+    }
+
+    public void setEmployeeTasks(Set<TaskEmployee> taskEmployees) {
+        this.employeeTasks = taskEmployees;
+    }
+
+    //    @Override
 //    public String toString() {
 //        StringBuilder sb = new StringBuilder();
 //        sb.append("Employee [id=").append(this.id);

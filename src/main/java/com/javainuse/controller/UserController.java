@@ -7,6 +7,7 @@ import com.javainuse.validator.UserValidator;
 import com.javainuse.model.User;
 
 import io.jsonwebtoken.Jwts;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,7 +79,11 @@ public class UserController {
             return error != null ? error : "Registration failed";
         }
 
-        this.userData.save(user);
+        try {
+            this.userData.save(user);
+        } catch (ConstraintViolationException cex) {
+            System.out.println(cex.getMessage());
+        }
         createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
 
         return "Registration successful.";

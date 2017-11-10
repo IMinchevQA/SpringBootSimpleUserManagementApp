@@ -2,12 +2,11 @@ package com.javainuse.controller;
 
 import com.javainuse.model.Employee;
 import com.javainuse.model.Employer;
+import com.javainuse.model.TaskEmployee;
 import com.javainuse.model.User;
-import com.javainuse.service.EmployeeService;
-import com.javainuse.service.EmployerService;
-import com.javainuse.service.EmployerServiceImpl;
-import com.javainuse.service.UserService;
+import com.javainuse.service.*;
 import com.javainuse.validator.EmployerUpdateValidator;
+import com.javainuse.validator.TaskValidator;
 import com.javainuse.validator.UserValidator;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.javainuse.controller.ControllerConstants.*;
@@ -40,10 +41,16 @@ public class EmployerController {
     private UserService userData;
 
     @Autowired
+    private TaskService taskData;
+
+    @Autowired
     private UserValidator userValidator;
 
     @Autowired
     private EmployerUpdateValidator employerUpdateValidator;
+
+    @Autowired
+    private TaskValidator taskValidator;
 
 
     @RequestMapping(value = LIST_ALL_EMPLOYERS_URL, method = RequestMethod.GET)
@@ -77,9 +84,7 @@ public class EmployerController {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            if (requestUserId != employerId) {
-                throw new IllegalAccessException("An Employer cannot see the count of employees assigned to another Employer!");
-            }
+            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "An Employer cannot see the count of employees assigned to another Employer!");
         }
 
         return employer.getEmployees() != null ? employer.getEmployees().size() : 0;
@@ -102,11 +107,9 @@ public class EmployerController {
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
-            long idRequestUser = this.employerData.findEmployerByUsername(requestUsername).getId();
+            long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            if (idRequestUser != employerId) {
-                throw new IllegalAccessException("Id of the Employer who sent the request and Employer Id passed in URL do not match!");
-            }
+            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
         }
 
         List<Employee> employees = employer.getEmployees().stream().collect(Collectors.toList());
@@ -138,9 +141,7 @@ public class EmployerController {
             String requestUser = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUser).getId();
 
-            if (requestUserId != id) {
-                throw new IllegalAccessException("Employer cannot edit another Employers!");
-            }
+            this.checkRequestUserIdAndEmployerId(requestUserId, id, "Employer cannot update another Employers!");
         }
 
         employerToBeUpdated.setFirstName(payload.getFirstName());
@@ -176,7 +177,17 @@ public class EmployerController {
 
         if (employerToBeDeleted.getEmployees() != null
                 && employerToBeDeleted.getEmployees().size() > 0) {
-            employerToBeDeleted.getEmployees().forEach(e -> e.setEmployer(null));
+            employerToBeDeleted.getEmployees().forEach(e -> {
+                e.setEmployer(null);
+                if (e.getEmployeeTasks() != null && e.getEmployeeTasks().size() > 0) {
+                    e.setEmployeeTasks(new HashSet<>());
+                }
+            });
+        }
+
+        if (employerToBeDeleted.getTaskEmployees() != null
+                && employerToBeDeleted.getTaskEmployees().size() > 0) {
+            employerToBeDeleted.getTaskEmployees().forEach(t -> this.taskData.deleteTask(t.getTid()));
         }
 
         long userIdToBeDeleted = this.userData.findByUsername(employerToBeDeleted.getUsername()).getUid();
@@ -202,20 +213,16 @@ public class EmployerController {
             throw new UsernameNotFoundException("No employee found with Id: " + employeeId);
         }
 
-        String requestUsername = this.getUsernameRequestUser(authToken);
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
             throw new IllegalAccessException(String.format("Only Employers can assign Employees!"));
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
+            String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            if (requestUserId != employerId) {
-                throw new IllegalAccessException(String.format(
-                        "Id of the Employer who sent the request and Employer Id passed in URL do not match!"
-                ));
-            }
+            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
 
             if (employee.getEmployer() != null) {
                 /** Checking if current Employee is already subscribed to current Employer*/
@@ -260,9 +267,7 @@ public class EmployerController {
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            if (requestUserId != employerId) {
-                throw new IllegalAccessException("Id of the Employer who sent the request and Employer Id passed in URL do not match!");
-            }
+            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
 
             /** Check if Employee is subscribed to another Employer!*/
             if (employee.getEmployer() != null
@@ -295,17 +300,16 @@ public class EmployerController {
             throw new UsernameNotFoundException("No employer found with Id: " + id);
         }
 
-        String requestUsername = this.getUsernameRequestUser(authToken);
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
             throw new IllegalAccessException("Only Administrator or Employer can change Employer's status!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
+            String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
-            if (requestUserId != id) {
-                throw new IllegalAccessException("Employer cannot change another Employer's status!");
-            }
+
+            this.checkRequestUserIdAndEmployerId(requestUserId, id, "Employer cannot change another Employer's status!");
         }
 
         employer.setIsActive();
@@ -313,6 +317,12 @@ public class EmployerController {
 
         return String.format("Status of Employer with username %s changed to %s!",
                 employer.getUsername(), employer.getIsActive() ? "active" : "inactive");
+    }
+
+    private void checkRequestUserIdAndEmployerId(long requestUserId, long employerPassedByUrlId, String message) throws IllegalAccessException {
+        if (requestUserId != employerPassedByUrlId) {
+            throw new IllegalAccessException(message);
+        }
     }
 
 

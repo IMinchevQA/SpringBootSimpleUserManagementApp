@@ -20,4 +20,9 @@ public class ControllerConstants {
     public static final String COUNT_EMPLOYEES_URL = "/employers/{employer_id}/count_employees";
     public static final String LIST_EMPLOYEES_OF_CURRENT_EMPLOYER_URL = "/employers/{employer_id}/list_employees";
     public static final String CHANGE_EMPLOYER_STATUS_URL = "/employers/change_status/{id}";
+    public static final String CREATE_TASK_URL = "/tasks/create_task/{employer_id}";
+    public static final String UPDATE_TASK_URL = "/tasks/update_task/{task_id}";
+    public static final String ASSIGN_EMPLOYEE_TO_A_TASK_URL = "/tasks/employer/{employer_id}/assign_employee/{employee_id}/to_task/{task_id}";
+    public static final String RELEASE_EMPLOYEE_FROM_A_TASK_URL = "/tasks/employer/{employer_id}/release_employee/{employee_id}/from_task/{task_id}";
+    public static final String ADD_TASK_UPDATE_BY_EMPLOYEE_URL = "/tasks/employee/{employee_id}/add_update/{task_id}";
 }
