@@ -37,6 +37,9 @@ public class UpdateTaskProgress {
     @ManyToOne
     private TaskEmployee task;
 
+    @Column
+    private String updateEmployeeUsername;
+
     public long getId() {
         return this.id;
     }
@@ -67,5 +70,13 @@ public class UpdateTaskProgress {
 
     public void setTask(TaskEmployee task) {
         this.task = task;
+    }
+
+    public String getUpdateEmployeeUsername() {
+        return this.updateEmployeeUsername;
+    }
+
+    public void setUpdateEmployeeUsername(String updateEmployeeUsername) {
+        this.updateEmployeeUsername = updateEmployeeUsername;
     }
 }

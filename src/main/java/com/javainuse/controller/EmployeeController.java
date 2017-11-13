@@ -1,5 +1,6 @@
 package com.javainuse.controller;
 
+import com.javainuse.exception.UserNotFoundException;
 import com.javainuse.model.Employer;
 import com.javainuse.model.User;
 import com.javainuse.service.EmployeeService;
@@ -14,12 +15,13 @@ import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.javainuse.controller.ControllerConstants.*;
 import static com.javainuse.security.SecurityConstants.SECRET;
@@ -66,18 +68,19 @@ public class EmployeeController {
     }
 
     @RequestMapping(value = UPDATE_EMPLOYEE_URL, method = RequestMethod.PUT)
-    public String updateEmployee(@RequestHeader(value="Authorization") String authToken,
-                                 @PathVariable("id") long id,
-                                 @RequestBody Employee payload,
-                                 BindingResult bindingResult) throws IllegalAccessException {
+    public Map<String, String> updateEmployee(@RequestHeader(value="Authorization") String authToken,
+                                              @PathVariable("employee_id") long employee_id,
+                                              @RequestBody Employee payload,
+                                              BindingResult bindingResult) throws IllegalAccessException, UserNotFoundException {
 
-        Employee employeeToBeUpdated = this.employeeData.findEmployeeById(id);
+        Employee employeeToBeUpdated = this.employeeData.findEmployeeById(employee_id);
 
         if (employeeToBeUpdated == null) {
-            throw new UsernameNotFoundException("There is no employee with id: " + id);
+            throw new UserNotFoundException("There is no employee with id: " + employee_id);
         }
 
         String usernameRequestUser = getUsernameRequestUser(authToken);
+        Map<String, String> responseObj = new HashMap<>();
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
             Employee requestEmployee = this.employeeData.findEmployeeByUsername(usernameRequestUser);
@@ -85,11 +88,13 @@ public class EmployeeController {
             /**
              * Checking if request Employee tries to modify data to another Employee
              */
-            if (requestEmployee.getId() != id) {
+            if (requestEmployee.getId() != employee_id) {
                 throw new IllegalAccessException("Employee users can only update their own profile data!");
             }
 
-            return updateEmployeeByEmployee(employeeToBeUpdated, payload, bindingResult);
+            responseObj.put("message", updateEmployeeByEmployee(employeeToBeUpdated, payload, bindingResult));
+            responseObj.put("employee_id", String.valueOf(employeeToBeUpdated.getId()));
+            return responseObj;
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
@@ -110,7 +115,9 @@ public class EmployeeController {
             if (requestEmployer.getId() != employeeEmployer.getId()) {
                 throw new IllegalAccessException("An Employer cannot update Employee assigned to another Employer!");
             }
-            return updateEmployeeByEmployer(employeeToBeUpdated, payload, bindingResult);
+            responseObj.put("message", updateEmployeeByEmployer(employeeToBeUpdated, payload, bindingResult));
+            responseObj.put("employee_id", String.valueOf(employeeToBeUpdated.getId()));
+            return responseObj;
         }
 
         /**
@@ -140,22 +147,25 @@ public class EmployeeController {
 
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new IllegalArgumentException(error != null ? error : "Update failed");
         }
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
 
-        return String.format("Employee with username '%s' was updated successfully!", employeeToBeUpdated.getUsername());
+        responseObj.put("message", String.format("Employee with username '%s' was updated successfully!", employeeToBeUpdated.getUsername()));
+        responseObj.put("employee_id", String.valueOf(employeeToBeUpdated.getId()));
+
+        return responseObj;
     }
 
     @RequestMapping(value = DELETE_EMPLOYEE_URL, method = RequestMethod.DELETE)
-    public String deleteEmployee(@RequestHeader(value="Authorization") String authToken,
-                                 @PathVariable("id") long id) throws IllegalAccessException {
+    public Map<String, String> deleteEmployee(@RequestHeader(value="Authorization") String authToken,
+                                 @PathVariable("employee_id") long employee_id) throws IllegalAccessException, UserNotFoundException {
 
-        Employee employeeToBeDeleted = this.employeeData.findEmployeeById(id);
+        Employee employeeToBeDeleted = this.employeeData.findEmployeeById(employee_id);
 
         if (employeeToBeDeleted == null) {
-            throw new UsernameNotFoundException("There is no employee with id: " + id);
+            throw new UserNotFoundException("There is no employee with id: " + employee_id);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
@@ -186,7 +196,11 @@ public class EmployeeController {
         this.employeeData.deleteEmployee(employeeToBeDeleted.getId());
         this.userData.deleteUser(userIdToBeDeleted);
 
-        return String.format("Employee and User with username '%s' was deleted successfully!", employeeToBeDeleted.getUsername());
+        Map<String, String> responseObj = new HashMap<>();
+        responseObj.put("message",  String.format("Employee and User with username '%s' was deleted successfully!", employeeToBeDeleted.getUsername()));
+        responseObj.put("employee_id", String.valueOf(employee_id));
+
+        return responseObj;
     }
 
     private String updateEmployeeByEmployer(Employee employeeToBeUpdated, Employee payload, BindingResult bindingResult) throws IllegalAccessException {
@@ -272,13 +286,13 @@ public class EmployeeController {
     }
 
     @RequestMapping(value = CHANGE_EMPLOYEE_STATUS_URL, method = RequestMethod.POST)
-    private String changeEmployeeStatus(@RequestHeader("Authorization") String authToken,
-                                        @PathVariable("id") long id) throws IllegalAccessException {
+    private Map<String, String> changeEmployeeStatus(@RequestHeader("Authorization") String authToken,
+                                        @PathVariable("employee_id") long employee_id) throws IllegalAccessException, UserNotFoundException {
 
-        Employee employee = this.employeeData.findEmployeeById(id);
+        Employee employee = this.employeeData.findEmployeeById(employee_id);
 
         if (employee == null) {
-            throw new UsernameNotFoundException("There is no employee with id: " + id);
+            throw new UserNotFoundException("There is no employee with id: " + employee_id);
         }
 
         String requestUsername = this.getUsernameRequestUser(authToken);
@@ -286,7 +300,7 @@ public class EmployeeController {
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
             requestUserId = this.employeeData.findEmployeeByUsername(requestUsername).getId();
-            if (requestUserId != id) {
+            if (requestUserId != employee_id) {
                 throw new IllegalAccessException("Employee cannot change another Employee's status!");
             }
         }
@@ -303,8 +317,12 @@ public class EmployeeController {
         employee.setIsActive();
         this.employeeData.updateEmployee(employee, employee.getUsername());
 
-        return String.format("Status of Employee with username %s changed to %s!",
-                employee.getUsername(), employee.getIsActive() ? "active" : "inactive");
+        Map<String, String> responseObj = new HashMap<>();
+        responseObj.put("message", String.format("Status of Employee with username %s changed to %s!",
+                employee.getUsername(), employee.getIsActive() ? "active" : "inactive"));
+        responseObj.put("employee_id", String.valueOf(employee_id));
+
+        return responseObj;
     }
 
     private String getUsernameRequestUser(String authToken) {

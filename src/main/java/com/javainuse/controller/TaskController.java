@@ -17,7 +17,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import static com.javainuse.controller.ControllerConstants.*;
 import static com.javainuse.security.SecurityConstants.SECRET;
@@ -52,7 +54,7 @@ public class TaskController {
 
 
     @RequestMapping(value = CREATE_TASK_URL, method = RequestMethod.POST)
-    public String createTask(@RequestHeader("Authorization") String authToken,
+    public Map<String, String> createTask(@RequestHeader("Authorization") String authToken,
                              @PathVariable("employer_id") long id,
                              @RequestBody TaskEmployee payload,
                              BindingResult bindingResult) throws IllegalAccessException {
@@ -78,22 +80,26 @@ public class TaskController {
         task.setTitle(payload.getTitle());
         task.setEmployer(employer);
 
+        Map<String, String> responseObj = new HashMap<>();
+
         this.taskValidator.validate(task, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new IllegalArgumentException(error != null ? error : "UpdateTaskProgress failed");
         }
 
         this.taskData.addTask(task);
         employer.getTaskEmployees().add(task);
         this.employerData.updateEmployer(employer, employer.getUsername());
+        responseObj.put("message", String.format("Task with title '%s', was created by Employer with username %s successfully!",
+                task.getTitle(), employer.getUsername()));
+        responseObj.put("task_id", String.valueOf(task.getTid()));
 
-        return String.format("Task with title %s was created by Employer with username %s successfully!",
-                task.getTitle(), employer.getUsername());
+        return responseObj;
     }
 
     @RequestMapping(value = UPDATE_TASK_URL, method = RequestMethod.POST)
-    public String updateTask(@RequestHeader("Authorization") String authToken,
+    public Map<String, String> updateTask(@RequestHeader("Authorization") String authToken,
                              @PathVariable("task_id") long id,
                              @RequestBody TaskEmployee payload,
                              BindingResult bindingResult) throws IllegalAccessException {
@@ -119,21 +125,25 @@ public class TaskController {
 
         task.setTitle(payload.getTitle());
 
+        Map<String, String> responseObj = new HashMap<>();
+
         this.taskValidator.validate(task, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new IllegalArgumentException(error != null ? error : "UpdateTaskProgress failed");
         }
 
         this.taskData.updateTask(task, task.getTitle());
 
-        return String.format("Task with id '%s' updated successfully!",
-                task.getTid());
+        responseObj.put("message", String.format("Task updated successfully!"));
+        responseObj.put("task_id", String.valueOf(task.getTid()));
+
+        return responseObj;
     }
 
 
     @RequestMapping(value = ASSIGN_EMPLOYEE_TO_A_TASK_URL, method = RequestMethod.POST)
-    public String assignEmployeeToTask(@RequestHeader("Authorization") String authToken,
+    public Map<String, String> assignEmployeeToTask(@RequestHeader("Authorization") String authToken,
                                        @PathVariable("employer_id") long employerId,
                                        @PathVariable("employee_id") long employeeId,
                                        @PathVariable("task_id") long taskId) throws IllegalAccessException {
@@ -166,6 +176,10 @@ public class TaskController {
             this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Employer cannot assign Employee to Task created by another Employer!");
         }
 
+        if (employee.getEmployer() == null) {
+            throw new IllegalAccessException("Employee who has no Employer cannot be assigned to Task!");
+        }
+
         if (employerId != employee.getEmployer().getId()) {
             throw new IllegalAccessException("Employee cannot be assigned to Task created by another Employer!");
         }
@@ -181,14 +195,20 @@ public class TaskController {
         employee.getEmployeeTasks().add(task);
         this.employeeData.updateEmployee(employee, employee.getUsername());
 
+        Map<String, String> responseObj = new HashMap<>();
 
-        return String.format("Employee with username '%s' assigned to Task with title '%s' successfully!",
-                employee.getUsername(), task.getTitle());
+        responseObj.put("message", String.format("Employee with username '%s' assigned to Task with title '%s' successfully!",
+                employee.getUsername(), task.getTitle()));
+        responseObj.put("employee_id", String.valueOf(employee.getId()));
+        responseObj.put("task_id", String.valueOf(task.getTid()));
+
+
+        return responseObj;
     }
 
 
     @RequestMapping(value = RELEASE_EMPLOYEE_FROM_A_TASK_URL, method = RequestMethod.POST)
-    public String releaseEmployeeFromTask(@RequestHeader("Authorization") String authToken,
+    public Map<String, String> releaseEmployeeFromTask(@RequestHeader("Authorization") String authToken,
                                        @PathVariable("employer_id") long employerId,
                                        @PathVariable("employee_id") long employeeId,
                                        @PathVariable("task_id") long taskId) throws IllegalAccessException {
@@ -240,13 +260,19 @@ public class TaskController {
         employee.getEmployeeTasks().remove(task);
         this.employeeData.updateEmployee(employee, employee.getUsername());
 
+        Map<String, String> responseObj = new HashMap<>();
 
-        return String.format("Employee with username '%s' released from Task with title '%s' successfully!",
-                employee.getUsername(), task.getTitle());
+        responseObj.put("message", String.format("Employee with username '%s' released from Task with title '%s' successfully!",
+                employee.getUsername(), task.getTitle()));
+        responseObj.put("employee_id", String.valueOf(employee.getId()));
+        responseObj.put("task_id", String.valueOf(task.getTid()));
+
+
+        return responseObj;
     }
 
     @RequestMapping(value = ADD_TASK_UPDATE_BY_EMPLOYEE_URL, method = RequestMethod.POST)
-    public String addTaskUpdateByEmployee(@RequestHeader("Authorization") String authToken,
+    public Map<String, String> addTaskUpdateByEmployee(@RequestHeader("Authorization") String authToken,
                                           @PathVariable("employee_id") long employee_id,
                                           @PathVariable("task_id") long task_id,
                                           @RequestBody UpdateTaskProgress payload,
@@ -295,14 +321,19 @@ public class TaskController {
         this.updateValidator.validate(update, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new IllegalArgumentException(error != null ? error : "UpdateTaskProgress failed");
         }
 
         update.setTask(task);
+        update.setUpdateEmployeeUsername(employee.getUsername());
         this.updateData.saveUpdate(update);
 
+        Map<String, String> responseObj = new HashMap<>();
+        responseObj.put("message", String.format("Employee with username '%s' updated his Task successfully!", employee.getUsername()));
+        responseObj.put("employee_id", String.valueOf(employee_id));
+        responseObj.put("task_id", String.valueOf(task_id));
 
-        return (String.format("Employee with username '%s' updated his Task successfully!", employee.getUsername()));
+        return responseObj;
     }
 
 
