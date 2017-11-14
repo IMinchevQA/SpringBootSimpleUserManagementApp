@@ -1,5 +1,6 @@
 package com.javainuse.controller;
 
+import com.javainuse.exception.UserNotFoundException;
 import com.javainuse.model.Employee;
 import com.javainuse.model.Employer;
 import com.javainuse.model.TaskEmployee;
@@ -13,7 +14,6 @@ import com.javainuse.validator.UpdateValidator;
 import com.javainuse.validator.UserValidator;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,25 +55,27 @@ public class TaskController {
 
     @RequestMapping(value = CREATE_TASK_URL, method = RequestMethod.POST)
     public Map<String, String> createTask(@RequestHeader("Authorization") String authToken,
-                             @PathVariable("employer_id") long id,
-                             @RequestBody TaskEmployee payload,
-                             BindingResult bindingResult) throws IllegalAccessException {
+                                          @PathVariable("employer_id") long employerId,
+                                          @RequestBody TaskEmployee payload,
+                                          BindingResult bindingResult) {
 
-        Employer employer = this.employerData.findEmployerById(id);
+        Employer employer = this.employerData.findEmployerById(employerId);
 
         if (employer == null) {
-            throw new UsernameNotFoundException("No employer found with Id: " + id);
+            throw new UserNotFoundException(EMPLOYER_STRING + employerId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can create Tasks!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can create Tasks!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, id, "Employer cannot create Task with another Employer's id!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("Employer cannot create Task with another Employer's id!");
+            }
         }
 
         TaskEmployee task = new TaskEmployee();
@@ -85,14 +87,16 @@ public class TaskController {
         this.taskValidator.validate(task, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            throw new IllegalArgumentException(error != null ? error : "UpdateTaskProgress failed");
+            throw new UnsupportedOperationException(error != null ? error : "UpdateTaskProgress failed");
         }
 
         this.taskData.addTask(task);
         employer.getTaskEmployees().add(task);
         this.employerData.updateEmployer(employer, employer.getUsername());
-        responseObj.put("message", String.format("Task with title '%s', was created by Employer with username %s successfully!",
-                task.getTitle(), employer.getUsername()));
+        responseObj.put("message", String.format(
+                "Task with title '%s', was created by Employer with username %s successfully!",
+                task.getTitle(),
+                employer.getUsername()));
         responseObj.put("task_id", String.valueOf(task.getTid()));
 
         return responseObj;
@@ -100,18 +104,18 @@ public class TaskController {
 
     @RequestMapping(value = UPDATE_TASK_URL, method = RequestMethod.POST)
     public Map<String, String> updateTask(@RequestHeader("Authorization") String authToken,
-                             @PathVariable("task_id") long id,
-                             @RequestBody TaskEmployee payload,
-                             BindingResult bindingResult) throws IllegalAccessException {
+                                          @PathVariable("task_id") long taskId,
+                                          @RequestBody TaskEmployee payload,
+                                          BindingResult bindingResult) {
 
-        TaskEmployee task = this.taskData.findTaskById(id);
+        TaskEmployee task = this.taskData.findTaskById(taskId);
 
         if (task == null) {
-            throw new NullPointerException(String.format("Task with id '%s' not found!", id));
+            throw new NullPointerException(String.format("No task found with Id: %s", taskId));
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can update a Task!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can update a Task!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
@@ -119,7 +123,7 @@ public class TaskController {
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
             if (requestUserId != task.getEmployer().getId()) {
-                throw new IllegalAccessException("Employer cannot modify Task created by another Employer!");
+                throw new UnsupportedOperationException("Employer cannot modify Task created by another Employer!");
             }
         }
 
@@ -130,13 +134,13 @@ public class TaskController {
         this.taskValidator.validate(task, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            throw new IllegalArgumentException(error != null ? error : "UpdateTaskProgress failed");
+            throw new UnsupportedOperationException(error != null ? error : "UpdateTaskProgress failed");
         }
 
         this.taskData.updateTask(task, task.getTitle());
 
         responseObj.put("message", String.format("Task updated successfully!"));
-        responseObj.put("task_id", String.valueOf(task.getTid()));
+        responseObj.put("task_id", String.valueOf(taskId));
 
         return responseObj;
     }
@@ -144,28 +148,28 @@ public class TaskController {
 
     @RequestMapping(value = ASSIGN_EMPLOYEE_TO_A_TASK_URL, method = RequestMethod.POST)
     public Map<String, String> assignEmployeeToTask(@RequestHeader("Authorization") String authToken,
-                                       @PathVariable("employer_id") long employerId,
-                                       @PathVariable("employee_id") long employeeId,
-                                       @PathVariable("task_id") long taskId) throws IllegalAccessException {
+                                                    @PathVariable("employer_id") long employerId,
+                                                    @PathVariable("employee_id") long employeeId,
+                                                    @PathVariable("task_id") long taskId) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
         Employee employee = this.employeeData.findEmployeeById(employeeId);
         TaskEmployee task = this.taskData.findTaskById(taskId);
 
         if (employer == null) {
-            throw new UsernameNotFoundException("No employer found with Id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (employee == null) {
-            throw new UsernameNotFoundException("No employee found with Id: " + employeeId);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         if (task == null) {
-            throw new NullPointerException("No task found with Id: " + taskId);
+            throw new NullPointerException(String.format("No task found with Id: %s", taskId));
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can assign Employee to a Task!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can assign Employee to a Task!");
         }
 
 
@@ -173,19 +177,21 @@ public class TaskController {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Employer cannot assign Employee to Task created by another Employer!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("Employer cannot assign Employee to Task created by another Employer!");
+            }
         }
 
         if (employee.getEmployer() == null) {
-            throw new IllegalAccessException("Employee who has no Employer cannot be assigned to Task!");
+            throw new UnsupportedOperationException("Employee who has no Employer cannot be assigned to Task!");
         }
 
         if (employerId != employee.getEmployer().getId()) {
-            throw new IllegalAccessException("Employee cannot be assigned to Task created by another Employer!");
+            throw new UnsupportedOperationException("Employee cannot be assigned to Task created by another Employer!");
         }
 
         if (employerId != task.getEmployer().getId()) {
-            throw  new IllegalAccessException("Task cannot be modified when Employer is not task creator!");
+            throw  new UnsupportedOperationException("Task cannot be modified when Employer is not task creator!");
         }
 
         if (employee.getEmployeeTasks().isEmpty()) {
@@ -197,10 +203,12 @@ public class TaskController {
 
         Map<String, String> responseObj = new HashMap<>();
 
-        responseObj.put("message", String.format("Employee with username '%s' assigned to Task with title '%s' successfully!",
-                employee.getUsername(), task.getTitle()));
-        responseObj.put("employee_id", String.valueOf(employee.getId()));
-        responseObj.put("task_id", String.valueOf(task.getTid()));
+        responseObj.put("message", String.format(
+                "Employee with username '%s' assigned to Task with title '%s' successfully!",
+                employee.getUsername(),
+                task.getTitle()));
+        responseObj.put("employee_id", String.valueOf(employeeId));
+        responseObj.put("task_id", String.valueOf(taskId));
 
 
         return responseObj;
@@ -211,18 +219,18 @@ public class TaskController {
     public Map<String, String> releaseEmployeeFromTask(@RequestHeader("Authorization") String authToken,
                                        @PathVariable("employer_id") long employerId,
                                        @PathVariable("employee_id") long employeeId,
-                                       @PathVariable("task_id") long taskId) throws IllegalAccessException {
+                                       @PathVariable("task_id") long taskId) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
         Employee employee = this.employeeData.findEmployeeById(employeeId);
         TaskEmployee task = this.taskData.findTaskById(taskId);
 
         if (employer == null) {
-            throw new UsernameNotFoundException("No employer found with Id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (employee == null) {
-            throw new UsernameNotFoundException("No employee found with Id: " + employeeId);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         if (task == null) {
@@ -230,7 +238,7 @@ public class TaskController {
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can release Employee from a Task!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can release Employee from a Task!");
         }
 
 
@@ -238,23 +246,25 @@ public class TaskController {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Employer cannot release from Task an Employee subscribed to another Employer!");
+            if (requestUserId != employeeId) {
+                throw new UnsupportedOperationException("Employer cannot release from Task an Employee subscribed to another Employer!");
+            }
         }
 
         if (employerId != employee.getEmployer().getId()) {
-            throw new IllegalAccessException("Employee subscribed to another Employer cannot be released from Task!");
+            throw new UnsupportedOperationException("Employee subscribed to another Employer cannot be released from Task!");
         }
 
         if (employerId != task.getEmployer().getId()) {
-            throw  new IllegalAccessException("Employer cannot modify task created by another Employer!");
+            throw  new UnsupportedOperationException("Employer cannot modify task created by another Employer!");
         }
 
         if (employee.getEmployeeTasks().isEmpty()) {
-            throw new NullPointerException("Employee task list is empty");
+            throw new UnsupportedOperationException("Employee task list is empty");
         }
 
         if (!employee.getEmployeeTasks().contains(task)) {
-            throw new NullPointerException("Employee task list does not contain current Task!");
+            throw new UnsupportedOperationException("Employee task list does not contain current Task!");
         }
 
         employee.getEmployeeTasks().remove(task);
@@ -262,35 +272,36 @@ public class TaskController {
 
         Map<String, String> responseObj = new HashMap<>();
 
-        responseObj.put("message", String.format("Employee with username '%s' released from Task with title '%s' successfully!",
-                employee.getUsername(), task.getTitle()));
-        responseObj.put("employee_id", String.valueOf(employee.getId()));
-        responseObj.put("task_id", String.valueOf(task.getTid()));
-
+        responseObj.put("message", String.format(
+                "Employee with username '%s' released from Task with title '%s' successfully!",
+                employee.getUsername(),
+                task.getTitle()));
+        responseObj.put("employee_id", String.valueOf(employeeId));
+        responseObj.put("task_id", String.valueOf(taskId));
 
         return responseObj;
     }
 
     @RequestMapping(value = ADD_TASK_UPDATE_BY_EMPLOYEE_URL, method = RequestMethod.POST)
     public Map<String, String> addTaskUpdateByEmployee(@RequestHeader("Authorization") String authToken,
-                                          @PathVariable("employee_id") long employee_id,
-                                          @PathVariable("task_id") long task_id,
-                                          @RequestBody UpdateTaskProgress payload,
-                                          BindingResult bindingResult) throws IllegalAccessException {
+                                                       @PathVariable("employee_id") long employee_id,
+                                                       @PathVariable("task_id") long task_id,
+                                                       @RequestBody UpdateTaskProgress payload,
+                                                       BindingResult bindingResult) {
 
         Employee employee = this.employeeData.findEmployeeById(employee_id);
         TaskEmployee task = this.taskData.findTaskById(task_id);
 
         if (employee == null) {
-            throw new UsernameNotFoundException("No employee found with Id: " + employee_id);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employee_id);
         }
 
         if (task == null) {
-            throw new NullPointerException("No task found with Id: " + task_id);
+            throw new NullPointerException(String.format("No task found with Id: %s!", task_id));
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
-            throw new IllegalAccessException("Only Employee can add task progress Update!");
+            throw new UnsupportedOperationException("Only Employee can add task progress Update!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
@@ -298,7 +309,7 @@ public class TaskController {
             long requestUserId = this.employeeData.findEmployeeByUsername(requestUsername).getId();
 
             if (requestUserId != employee_id) {
-                throw new IllegalAccessException("Employee cannot add Task progress update for another Employee's Id!");
+                throw new UnsupportedOperationException("Employee cannot add Task progress update for another Employee's Id!");
             }
         }
 
@@ -329,19 +340,13 @@ public class TaskController {
         this.updateData.saveUpdate(update);
 
         Map<String, String> responseObj = new HashMap<>();
-        responseObj.put("message", String.format("Employee with username '%s' updated his Task successfully!", employee.getUsername()));
+        responseObj.put("message", String.format(
+                "Employee with username '%s' updated his Task successfully!",
+                employee.getUsername()));
         responseObj.put("employee_id", String.valueOf(employee_id));
         responseObj.put("task_id", String.valueOf(task_id));
 
         return responseObj;
-    }
-
-
-
-    private void checkRequestUserIdAndEmployerId(long requestUserId, long employerPassedByUrlId, String message) throws IllegalAccessException {
-        if (requestUserId != employerPassedByUrlId) {
-            throw new IllegalAccessException(message);
-        }
     }
 
 

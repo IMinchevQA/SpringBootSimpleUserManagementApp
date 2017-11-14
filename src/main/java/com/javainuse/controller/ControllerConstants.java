@@ -7,6 +7,8 @@ public class ControllerConstants {
     public static final String ROLE_ADMIN = "ROLE_ADMIN";
     public static final String ROLE_EMPLOYER = "ROLE_EMPLOYER";
     public static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+    public static final String EMPLOYER_STRING = "Employer";
+    public static final String EMPLOYEE_STRING = "Employee";
     public static final String LIST_ALL_USERS_URL = "/users/list_all_users";
     public static final String LIST_ALL_EMPLOYEES_URL = "/employees/list_all_employees";
     public static final String UPDATE_EMPLOYEE_URL = "/employees/update_employee/{employee_id}";

@@ -2,10 +2,8 @@ package com.javainuse.controller;
 
 import com.javainuse.exception.UserNotFoundException;
 import com.javainuse.model.Employer;
-import com.javainuse.model.User;
 import com.javainuse.service.EmployeeService;
 import com.javainuse.model.Employee;
-import com.javainuse.service.EmployeeServiceImpl;
 import com.javainuse.service.EmployerService;
 import com.javainuse.service.UserService;
 import com.javainuse.validator.EmployeeByEmployeeUpdateValidator;
@@ -18,7 +16,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +57,7 @@ public class EmployeeController {
                                         Pageable pageable) throws IllegalAccessException {
 
         if (!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
-            throw new IllegalAccessException("Only Administrator users can see all employees!");
+            throw new UnsupportedOperationException("Only Administrator users can see all employees!");
         }
 
         Page<Employee> page = this.employeeData.listEmployees(pageable);
@@ -69,14 +66,14 @@ public class EmployeeController {
 
     @RequestMapping(value = UPDATE_EMPLOYEE_URL, method = RequestMethod.PUT)
     public Map<String, String> updateEmployee(@RequestHeader(value="Authorization") String authToken,
-                                              @PathVariable("employee_id") long employee_id,
+                                              @PathVariable("employee_id") long employeeId,
                                               @RequestBody Employee payload,
-                                              BindingResult bindingResult) throws IllegalAccessException, UserNotFoundException {
+                                              BindingResult bindingResult) {
 
-        Employee employeeToBeUpdated = this.employeeData.findEmployeeById(employee_id);
+        Employee employeeToBeUpdated = this.employeeData.findEmployeeById(employeeId);
 
         if (employeeToBeUpdated == null) {
-            throw new UserNotFoundException("There is no employee with id: " + employee_id);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         String usernameRequestUser = getUsernameRequestUser(authToken);
@@ -88,8 +85,8 @@ public class EmployeeController {
             /**
              * Checking if request Employee tries to modify data to another Employee
              */
-            if (requestEmployee.getId() != employee_id) {
-                throw new IllegalAccessException("Employee users can only update their own profile data!");
+            if (requestEmployee.getId() != employeeId) {
+                throw new UnsupportedOperationException("Employee users can only update their own profile data!");
             }
 
             responseObj.put("message", updateEmployeeByEmployee(employeeToBeUpdated, payload, bindingResult));
@@ -106,14 +103,14 @@ public class EmployeeController {
              * Check if current Employee has Employer.
              */
             if (employeeEmployer == null) {
-                throw new IllegalAccessException("Current Employee has no Employer. The Employee must be assigned to an Employer first and then might be updated!");
+                throw new UnsupportedOperationException("Current Employee has no Employer. The Employee must be assigned to an Employer first and then might be updated!");
             }
 
             /**
              * Check if the Employee is assigned to the request Employer.
              */
             if (requestEmployer.getId() != employeeEmployer.getId()) {
-                throw new IllegalAccessException("An Employer cannot update Employee assigned to another Employer!");
+                throw new UnsupportedOperationException("An Employer cannot update Employee assigned to another Employer!");
             }
             responseObj.put("message", updateEmployeeByEmployer(employeeToBeUpdated, payload, bindingResult));
             responseObj.put("employee_id", String.valueOf(employeeToBeUpdated.getId()));
@@ -147,7 +144,7 @@ public class EmployeeController {
 
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            throw new IllegalArgumentException(error != null ? error : "Update failed");
+            throw new UnsupportedOperationException(error != null ? error : "Update failed");
         }
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
@@ -160,16 +157,16 @@ public class EmployeeController {
 
     @RequestMapping(value = DELETE_EMPLOYEE_URL, method = RequestMethod.DELETE)
     public Map<String, String> deleteEmployee(@RequestHeader(value="Authorization") String authToken,
-                                 @PathVariable("employee_id") long employee_id) throws IllegalAccessException, UserNotFoundException {
+                                              @PathVariable("employee_id") long employeeId) {
 
-        Employee employeeToBeDeleted = this.employeeData.findEmployeeById(employee_id);
+        Employee employeeToBeDeleted = this.employeeData.findEmployeeById(employeeId);
 
         if (employeeToBeDeleted == null) {
-            throw new UserNotFoundException("There is no employee with id: " + employee_id);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer users is able to delete an Employee!");
+            throw new UnsupportedOperationException("Only Administrator or Employer user can delete an Employee!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
@@ -177,7 +174,7 @@ public class EmployeeController {
              * Check if current Employee has Employer.
              */
             if (employeeToBeDeleted.getEmployer() == null) {
-                throw new IllegalAccessException("Current Employee has no Employer. Only Administrator is able to delete unsigned Employees!");
+                throw new UnsupportedOperationException("Current Employee has no Employer. Only Administrator can delete unsigned Employee!");
             }
 
             String requestUsername = this.getUsernameRequestUser(authToken);
@@ -187,7 +184,7 @@ public class EmployeeController {
              * Check if the Employee is assigned to the request Employer.
              */
             if (requestEmployerId != employeeToBeDeleted.getEmployer().getId()) {
-                throw new IllegalAccessException("An Employer cannot delete Employee assigned to another Employer!");
+                throw new UnsupportedOperationException("An Employer cannot delete Employee assigned to another Employer!");
             }
         }
 
@@ -198,12 +195,14 @@ public class EmployeeController {
 
         Map<String, String> responseObj = new HashMap<>();
         responseObj.put("message",  String.format("Employee and User with username '%s' was deleted successfully!", employeeToBeDeleted.getUsername()));
-        responseObj.put("employee_id", String.valueOf(employee_id));
+        responseObj.put("employee_id", String.valueOf(employeeId));
 
         return responseObj;
     }
 
-    private String updateEmployeeByEmployer(Employee employeeToBeUpdated, Employee payload, BindingResult bindingResult) throws IllegalAccessException {
+    private String updateEmployeeByEmployer(Employee employeeToBeUpdated,
+                                            Employee payload,
+                                            BindingResult bindingResult) {
         /**
          * Check if Employer tries to edit some of the FORBIDDEN fields:
          * first name
@@ -222,7 +221,7 @@ public class EmployeeController {
                 || payload.getSex() != null
                 || payload.getDateOfBirth() != null) {
 
-            throw new IllegalAccessException("Employer is not allowed to modify: first name, middle initial, last name, phone number, date of hire, sex, date of birth!");
+            throw new UnsupportedOperationException("Employer is not allowed to modify: first name, middle initial, last name, phone number, date of hire, sex, date of birth!");
         }
 
         employeeToBeUpdated.setEmployeeNumber(payload.getEmployeeNumber());
@@ -236,14 +235,16 @@ public class EmployeeController {
         this.employeeByEmployerUpdateValidator.validate(employeeToBeUpdated, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new UnsupportedOperationException(error != null ? error : "Update failed");
         }
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
 
         return String.format("Employee with username '%s' was updated successfully!", employeeToBeUpdated.getUsername());
     }
 
-    private String updateEmployeeByEmployee(Employee employeeToBeUpdated, Employee payload, BindingResult bindingResult) throws IllegalAccessException {
+    private String updateEmployeeByEmployee(Employee employeeToBeUpdated,
+                                            Employee payload,
+                                            BindingResult bindingResult) {
 
         /**
          * Check if Employee tries to edit some of the FORBIDDEN fields:
@@ -265,7 +266,7 @@ public class EmployeeController {
                 || payload.getYearBonus() != null
                 || payload.getCommission() != null) {
 
-            throw new IllegalAccessException("Employee is not allowed to modify: employee number, working department, date of hire, job, education level, salary, bonus and commission!");
+            throw new UnsupportedOperationException("Employee is not allowed to modify: employee number, working department, date of hire, job, education level, salary, bonus and commission!");
         }
 
         employeeToBeUpdated.setFirstName(payload.getFirstName());
@@ -278,7 +279,7 @@ public class EmployeeController {
         this.employeeByEmployeeUpdateValidator.validate(employeeToBeUpdated, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "UpdateTaskProgress failed";
+            throw new UnsupportedOperationException(error != null ? error : "Update failed");
         }
 
         this.employeeData.updateEmployee(employeeToBeUpdated, employeeToBeUpdated.getUsername());
@@ -287,12 +288,12 @@ public class EmployeeController {
 
     @RequestMapping(value = CHANGE_EMPLOYEE_STATUS_URL, method = RequestMethod.POST)
     private Map<String, String> changeEmployeeStatus(@RequestHeader("Authorization") String authToken,
-                                        @PathVariable("employee_id") long employee_id) throws IllegalAccessException, UserNotFoundException {
+                                                     @PathVariable("employee_id") long employeeId) {
 
-        Employee employee = this.employeeData.findEmployeeById(employee_id);
+        Employee employee = this.employeeData.findEmployeeById(employeeId);
 
         if (employee == null) {
-            throw new UserNotFoundException("There is no employee with id: " + employee_id);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         String requestUsername = this.getUsernameRequestUser(authToken);
@@ -300,17 +301,17 @@ public class EmployeeController {
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
             requestUserId = this.employeeData.findEmployeeByUsername(requestUsername).getId();
-            if (requestUserId != employee_id) {
-                throw new IllegalAccessException("Employee cannot change another Employee's status!");
+            if (requestUserId != employeeId) {
+                throw new UnsupportedOperationException("Employee cannot change another Employee's status!");
             }
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
             if (employee.getEmployer() != null && requestUserId != employee.getEmployer().getId()) {
-                throw new IllegalAccessException("Employer cannot change the status of Employee subscribed to another Employer!");
+                throw new UnsupportedOperationException("Employer cannot change the status of Employee subscribed to another Employer!");
             } else if (employee.getEmployer() == null) {
-                throw new IllegalAccessException("Only Administrator can change status of Employee who has no Employer!");
+                throw new UnsupportedOperationException("Only Administrator can change status of Employee who has no Employer!");
             }
         }
 
@@ -320,7 +321,7 @@ public class EmployeeController {
         Map<String, String> responseObj = new HashMap<>();
         responseObj.put("message", String.format("Status of Employee with username %s changed to %s!",
                 employee.getUsername(), employee.getIsActive() ? "active" : "inactive"));
-        responseObj.put("employee_id", String.valueOf(employee_id));
+        responseObj.put("employee_id", String.valueOf(employeeId));
 
         return responseObj;
     }
@@ -332,20 +333,5 @@ public class EmployeeController {
                 .getBody()
                 .getSubject();
         return usernameRequestUser;
-    }
-
-
-    /**
-     * Both methods below are invoked with reflection from UserController.
-     */
-    public void addNewEmployee(User user) {
-        Employee employee = new Employee();
-        employee.setUsername(user.getUsername());
-        employee.setDateOfHire(new Date());
-        this.employeeData.addEmployee(employee);
-    }
-
-    private void setEmployeeData (EmployeeServiceImpl employeeData) {
-        this.employeeData = employeeData;
     }
 }

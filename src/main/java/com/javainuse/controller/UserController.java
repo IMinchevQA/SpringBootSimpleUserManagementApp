@@ -1,5 +1,7 @@
 package com.javainuse.controller;
 
+import com.javainuse.model.Employee;
+import com.javainuse.model.Employer;
 import com.javainuse.model.Role;
 import com.javainuse.repository.RoleRepository;
 import com.javainuse.service.*;
@@ -11,13 +13,10 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.Method;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static com.javainuse.controller.ControllerConstants.*;
 import static com.javainuse.security.SecurityConstants.*;
@@ -62,10 +61,25 @@ public class UserController {
     }
 
     @RequestMapping(value = REGISTER_URL, method = RequestMethod.POST)
-    public String registration(@RequestBody RegisterObject payload, BindingResult bindingResult) {
+    public Map<String, String> registration(@RequestHeader(value = "Authorization") String authToken,
+                               @RequestBody RegisterObject payload,
+                               BindingResult bindingResult) {
+
+        Map<String, String> responseObj = new HashMap<>();
 
         User user = new User();
         Set<Role> roles = new HashSet<>();
+
+        if (payload.getRoleId() == 1) {
+            if (authToken == null || authToken.length() == 0) {
+                throw new UnsupportedOperationException("No Authorization token provided!");
+            }
+
+            if(!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
+                throw new UnsupportedOperationException("Only Administrator can register another Administrator!");
+            }
+        }
+
         roles.add(this.roleRepository.findOne(payload.getRoleId()));
         user.setUsername(payload.getUsername());
         user.setPassword(payload.getPassword());
@@ -76,103 +90,35 @@ public class UserController {
 
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            return error != null ? error : "Registration failed";
+            throw new UnsupportedOperationException(error != null ? error : "Registration failed");
         }
 
         try {
+            createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
             this.userData.save(user);
         } catch (ConstraintViolationException cex) {
             System.out.println(cex.getMessage());
         }
-        createEntity(this.roleRepository.findOne(payload.getRoleId()), user);
 
-        return "Registration successful.";
+        responseObj.put("message", "Registration successful!");
+        return responseObj;
     }
 
 
     private void createEntity(Role role, User user) {
-        try {
-            switch (role.getName()) {
-                case ROLE_ADMIN:
-                    System.out.println("admin");
-                    break;
-                case ROLE_EMPLOYER:
-                    EmployerController employerController = EmployerController.class.newInstance();
-                    Method[] methodsEmployerController = EmployerController.class.getDeclaredMethods();
-
-                    Method setEmployerDataMethod = Stream.of(methodsEmployerController)
-                            .filter(method -> method.getName().equals("setEmployerData"))
-                            .findFirst()
-                            .get();
-
-                    Method addEmployerMethod = Stream.of(methodsEmployerController)
-                            .filter(method -> method.getName().equals("addNewEmployer"))
-                            .findFirst()
-                            .get();
-
-                    setEmployerDataMethod.setAccessible(true);
-                    setEmployerDataMethod.invoke(employerController, this.employerData);
-                    addEmployerMethod.setAccessible(true);
-                    addEmployerMethod.invoke(employerController, user);
-
-                    break;
-                case ROLE_EMPLOYEE:
-                    EmployeeController employeeController = EmployeeController.class.newInstance();
-                    Method[] methodsEmployeeController = EmployeeController.class.getDeclaredMethods();
-
-                    Method setEmployeeDataMethod = Stream.of(methodsEmployeeController)
-                            .filter(method -> method.getName().equals("setEmployeeData"))
-                            .findFirst()
-                            .get();
-
-                    Method addEmployeeMethod = Stream.of(methodsEmployeeController)
-                            .filter(method -> method.getName().equals("addNewEmployee"))
-                            .findFirst()
-                            .get();
-
-                    setEmployeeDataMethod.setAccessible(true);
-                    setEmployeeDataMethod.invoke(employeeController, this.employeeData);
-                    addEmployeeMethod.setAccessible(true);
-                    addEmployeeMethod.invoke(employeeController, user);
-                    break;
-            }
-        } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+        switch (role.getName()) {
+            case ROLE_EMPLOYER:
+                Employer employer = new Employer();
+                employer.setUsername(user.getUsername());
+                this.employerData.addEmployer(employer);
+                break;
+            case ROLE_EMPLOYEE:
+                Employee employee = new Employee();
+                employee.setUsername(user.getUsername());
+                employee.setDateOfHire(new Date());
+                this.employeeData.addEmployee(employee);
+                break;
         }
-    }
-
-
-    private String getUsernameRequestUser(String authToken) {
-        String usernameRequestUser = Jwts.parser()
-                .setSigningKey(SECRET.getBytes())
-                .parseClaimsJws(authToken.replace(TOKEN_PREFIX, ""))
-                .getBody()
-                .getSubject();
-        return usernameRequestUser;
-    }
-}
-
-
-
-class LoginObject {
-    private String username;
-    private String password;
-
-
-    public String getUsername() {
-        return this.username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return this.password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 }
 

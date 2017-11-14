@@ -6,7 +6,6 @@ import com.javainuse.model.Employer;
 import com.javainuse.model.User;
 import com.javainuse.service.*;
 import com.javainuse.validator.EmployerUpdateValidator;
-import com.javainuse.validator.TaskValidator;
 import com.javainuse.validator.UserValidator;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,16 +48,13 @@ public class EmployerController {
     @Autowired
     private EmployerUpdateValidator employerUpdateValidator;
 
-    @Autowired
-    private TaskValidator taskValidator;
-
 
     @RequestMapping(value = LIST_ALL_EMPLOYERS_URL, method = RequestMethod.GET)
     public List<Employer> listEmployers(@RequestHeader(value = "Authorization") String authToken,
-                                        Pageable pageable) throws IllegalAccessException {
+                                        Pageable pageable) {
 
         if (!this.userValidator.isUserInRole(authToken, ROLE_ADMIN)) {
-            throw new IllegalAccessException("Only Administrator users can see all employers!");
+            throw new UnsupportedOperationException("Only Administrator users can see all employers!");
         }
 
         Page<Employer> page = this.employerData.listEmployers(pageable);
@@ -68,28 +64,30 @@ public class EmployerController {
 
     @RequestMapping(value = COUNT_EMPLOYEES_URL, method = RequestMethod.GET)
     public Map<String, String> countEmployees(@RequestHeader(value = "Authorization") String authToken,
-                                              @PathVariable("employer_id") long employerId) throws IllegalAccessException, UserNotFoundException {
+                                              @PathVariable("employer_id") long employerId) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
 
         if (employer == null) {
-            throw new UserNotFoundException("No employer found with id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can require count of the Employees!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can require count of the Employees!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "An Employer cannot see the count of employees assigned to another Employer!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("An Employer cannot see the count of employees assigned to another Employer!");
+            }
         }
 
         Map<String, String> responseObj = new HashMap<>();
 
-        responseObj.put("count_employess", String.valueOf(employer.getEmployees() != null ? employer.getEmployees().size() : 0));
+        responseObj.put("count_employees", String.valueOf(employer.getEmployees() != null ? employer.getEmployees().size() : 0));
 
         return responseObj;
     }
@@ -97,23 +95,25 @@ public class EmployerController {
     @RequestMapping(value = LIST_EMPLOYEES_OF_CURRENT_EMPLOYER_URL, method = RequestMethod.GET)
     public List<Employee> listEmployeesOfCurrentEmployer(@RequestHeader("Authorization") String authToken,
                                                          @PathVariable("employer_id") long employerId,
-                                                         Pageable pageable) throws IllegalAccessException, UserNotFoundException {
+                                                         Pageable pageable) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
 
         if (employer == null) {
-            throw new UserNotFoundException("No employer found with id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can see list of employees!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can see list of employees!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("An Employer cannot see employees assigned to another Employer!");
+            }
         }
 
         List<Employee> employees = employer.getEmployees().stream().collect(Collectors.toList());
@@ -127,25 +127,27 @@ public class EmployerController {
 
     @RequestMapping(value = UPDATE_EMPLOYER_URL, method = RequestMethod.PUT)
     public Map<String, String> updateEmployer(@RequestHeader("Authorization") String authToken,
-                               @PathVariable("employer_id") long employer_id,
-                               @RequestBody Employer payload,
-                               BindingResult bindingResult) throws IllegalAccessException, UserNotFoundException {
+                                              @PathVariable("employer_id") long employerId,
+                                              @RequestBody Employer payload,
+                                              BindingResult bindingResult) {
 
-        Employer employerToBeUpdated = this.employerData.findEmployerById(employer_id);
+        Employer employerToBeUpdated = this.employerData.findEmployerById(employerId);
 
         if (employerToBeUpdated == null) {
-            throw new UserNotFoundException("No employer found with id: " + employer_id);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can edit Employers!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can edit Employers!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUser = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUser).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employer_id, "Employer cannot update another Employers!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("Employer cannot update another Employers!");
+            }
         }
 
         employerToBeUpdated.setFirstName(payload.getFirstName());
@@ -155,14 +157,16 @@ public class EmployerController {
         this.employerUpdateValidator.validate(employerToBeUpdated, bindingResult);
         if (bindingResult.hasErrors()) {
             String error = bindingResult.getAllErrors().get(0).getCode();
-            throw new IllegalArgumentException(error != null ? error : "Update failed");
+            throw new UnsupportedOperationException(error != null ? error : "Update failed");
         }
 
         this.employerData.updateEmployer(employerToBeUpdated, employerToBeUpdated.getUsername());
 
         Map<String, String> responseObj = new HashMap<>();
-        responseObj.put("message", String.format("Employer with username '%s' updated successfully!", employerToBeUpdated.getUsername()));
-        responseObj.put("employer_id", String.valueOf(employer_id));
+        responseObj.put("message", String.format(
+                "Employer with username '%s' updated successfully!",
+                employerToBeUpdated.getUsername()));
+        responseObj.put("employer_id", String.valueOf(employerId));
 
         return responseObj;
     }
@@ -171,16 +175,17 @@ public class EmployerController {
     @Transactional
     @RequestMapping(value = DELETE_EMPLOYER_URL, method = RequestMethod.DELETE)
     public Map<String, String> deleteEmployer(@RequestHeader("Authorization") String authToken,
-                                 @PathVariable("employer_id") long employer_id) throws IllegalAccessException, UserNotFoundException {
-        Employer employerToBeDeleted = this.employerData.findEmployerById(employer_id);
+                                              @PathVariable("employer_id") long employerId) {
+
+        Employer employerToBeDeleted = this.employerData.findEmployerById(employerId);
 
         if (employerToBeDeleted == null) {
-            throw new UserNotFoundException("No employer found with id: " + employer_id);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)
                 || this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
-            throw new IllegalAccessException("Only Administrator is able to delete Employers!");
+            throw new UnsupportedOperationException("Only Administrator is able to delete Employers!");
         }
 
         /**
@@ -218,47 +223,54 @@ public class EmployerController {
         this.userData.deleteUser(userIdToBeDeleted);
 
         Map<String, String> responseObj = new HashMap<>();
-        responseObj.put("message", String.format("Employer with username '%s' deleted successfully!", employerToBeDeleted.getUsername()));
-        responseObj.put("employer_id", String.valueOf(employer_id));
+        responseObj.put("message", String.format(
+                "Employer with username '%s' deleted successfully!",
+                employerToBeDeleted.getUsername()));
+        responseObj.put("employer_id", String.valueOf(employerId));
 
         return responseObj;
     }
 
     @RequestMapping(value = SUBSCRIBE_EMPLOYEE_URL, method = RequestMethod.POST)
     public Map<String, String> subscribeEmployee(@RequestHeader(value="Authorization") String authToken,
-                                    @PathVariable("employer_id") long employerId,
-                                    @PathVariable("employee_id") long employeeId) throws IllegalAccessException, UserNotFoundException {
+                                                 @PathVariable("employer_id") long employerId,
+                                                 @PathVariable("employee_id") long employeeId) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
         Employee employee = this.employeeData.findEmployeeById(employeeId);
 
         if (employer == null) {
-            throw new UserNotFoundException("No employer found with Id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
         if (employee == null) {
-            throw new UserNotFoundException("No employee found with Id: " + employeeId);
+            throw new UserNotFoundException(EMPLOYEE_STRING ,employeeId);
         }
 
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException(String.format("Only Employers can assign Employees!"));
+            throw new UnsupportedOperationException("Only Employers can assign Employees!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("An Employer cannot subscribe Employee to another Employer!");
+            }
 
             if (employee.getEmployer() != null) {
                 /** Checking if current Employee is already subscribed to current Employer*/
                 if (employee.getEmployer().getId() == employer.getId()) {
-                    throw new IllegalAccessException(
-                            String.format("Employee with username %s is already subscribed to Employer with username %s",
-                                    employee.getUsername(), employer.getUsername()));
+                    throw new UnsupportedOperationException(
+                            String.format(
+                                    "Employee with username %s is already subscribed to Employer with username %s",
+                                    employee.getUsername(),
+                                    employer.getUsername()));
                 } else {
-                    throw new IllegalAccessException(
-                            String.format("Employee with username %s is subscribed to another Employer!",
+                    throw new UnsupportedOperationException(
+                            String.format(
+                                    "Employee with username %s is subscribed to another Employer!",
                                     employee.getUsername()));
                 }
             }
@@ -268,7 +280,10 @@ public class EmployerController {
         this.employeeData.updateEmployee(employee, employee.getUsername());
 
         Map<String, String> responseObj = new HashMap<>();
-        responseObj.put("message", String.format("Employee with username %s was subscribed to Employer with username %s successfully!!!", employee.getUsername(), employer.getUsername()));
+        responseObj.put("message", String.format(
+                "Employee with username %s was subscribed to Employer with username %s successfully!!!",
+                employee.getUsername(),
+                employer.getUsername()));
         responseObj.put("employer_id", String.valueOf(employerId));
         responseObj.put("employee_id", String.valueOf(employeeId));
 
@@ -277,43 +292,49 @@ public class EmployerController {
 
     @RequestMapping(value = RELEASE_EMPLOYEE_URL, method = RequestMethod.POST)
     public Map<String, String> releaseEmployee(@RequestHeader("Authorization") String authToken,
-                                  @PathVariable("employer_id") long employerId,
-                                  @PathVariable("employee_id") long employeeId) throws IllegalAccessException, UserNotFoundException {
+                                               @PathVariable("employer_id") long employerId,
+                                               @PathVariable("employee_id") long employeeId) {
 
         Employer employer = this.employerData.findEmployerById(employerId);
         Employee employee = this.employeeData.findEmployeeById(employeeId);
 
         if (employer == null) {
-            throw new UserNotFoundException("No employer found with Id: " + employerId);
+            throw new UserNotFoundException(EMPLOYER_STRING, employeeId);
         }
         if (employee == null) {
-            throw new UserNotFoundException("No employee found with Id: " + employeeId);
+            throw new UserNotFoundException(EMPLOYEE_STRING, employeeId);
         }
 
         String requestUsername = this.getUsernameRequestUser(authToken);
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can release an Employee!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can release an Employee!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employerId, "Id of the Employer who sent the request and Employer Id passed in URL do not match!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("Id of the Employer who sent the request and Employer Id passed in URL do not match!");
+            }
 
             /** Check if Employee is subscribed to another Employer!*/
             if (employee.getEmployer() != null
                     && employee.getEmployer().getId() != employer.getId()) {
-                throw new IllegalAccessException(
-                        String.format("Employer is not allowed to release another Employer's Employee!",
-                                employee.getUsername(), employer.getUsername()));
+                throw new UnsupportedOperationException(
+                        String.format(
+                                "Employer is not allowed to release another Employer's Employee!",
+                                employee.getUsername(),
+                                employer.getUsername()));
             }
         }
 
         /** Check if Employee has no Employer!*/
         if (employee.getEmployer() == null) {
-            throw new IllegalAccessException(String.format(
-                    "Employee with username %s has no Employer!", employee.getUsername()));
+            throw new UnsupportedOperationException(
+                    String.format(
+                            "Employee with username %s has no Employer!",
+                            employee.getUsername()));
         }
 
         employee.setEmployer(null);
@@ -328,41 +349,39 @@ public class EmployerController {
 
     @RequestMapping(value = CHANGE_EMPLOYER_STATUS_URL, method = RequestMethod.POST)
     public Map<String, String> changeEmployerStatus(@RequestHeader("Authorization") String authToken,
-                                        @PathVariable("employer_id") long employer_id) throws IllegalAccessException, UserNotFoundException {
+                                                    @PathVariable("employer_id") long employerId) {
 
-        Employer employer = this.employerData.findEmployerById(employer_id);
+        Employer employer = this.employerData.findEmployerById(employerId);
 
         if (employer == null) {
-            throw new UserNotFoundException("No employer found with Id: " + employer_id);
+            throw new UserNotFoundException(EMPLOYER_STRING, employerId);
         }
 
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYEE)) {
-            throw new IllegalAccessException("Only Administrator or Employer can change Employer's status!");
+            throw new UnsupportedOperationException("Only Administrator or Employer can change Employer's status!");
         }
 
         if (this.userValidator.isUserInRole(authToken, ROLE_EMPLOYER)) {
             String requestUsername = this.getUsernameRequestUser(authToken);
             long requestUserId = this.employerData.findEmployerByUsername(requestUsername).getId();
 
-            this.checkRequestUserIdAndEmployerId(requestUserId, employer_id, "Employer cannot change another Employer's status!");
+            if (requestUserId != employerId) {
+                throw new UnsupportedOperationException("An Employer cannot change the status of another Employer!");
+            }
         }
 
         employer.setIsActive();
         this.employerData.updateEmployer(employer, employer.getUsername());
 
         Map<String, String> responseObj = new HashMap<>();
-        responseObj.put("message", String.format("Status of Employer with username %s changed to %s!",
-                employer.getUsername(), employer.getIsActive() ? "active" : "inactive"));
-        responseObj.put("employer_id", String.valueOf(employer_id));
+        responseObj.put("message", String.format(
+                "Status of Employer with username %s changed to %s!",
+                employer.getUsername(),
+                employer.getIsActive() ? "active" : "inactive"));
+        responseObj.put("employer_id", String.valueOf(employerId));
 
         return responseObj;
-    }
-
-    private void checkRequestUserIdAndEmployerId(long requestUserId, long employerPassedByUrlId, String message) throws IllegalAccessException {
-        if (requestUserId != employerPassedByUrlId) {
-            throw new IllegalAccessException(message);
-        }
     }
 
 
