@@ -32,7 +32,7 @@ public class InitialDataLoader implements ApplicationListener<ContextRefreshedEv
      * true -  no data will be loaded in the a.m. repositories
      * false - initial data will be loaded in a.m. repositories
      */
-    boolean alreadySetup = true;
+    boolean alreadySetup = false;
 
     @Autowired
     private UserRepository userRepository;
